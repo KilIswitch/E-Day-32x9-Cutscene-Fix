@@ -1,100 +1,83 @@
-# E-Day 32:9 cutscenes + customizable gameplay FOV
+# E-Day synchronous cinematic framing fix + gameplay FOV
 
-## Lens-aware cinematic framing
+This version corrects cinematic framing before each compatible camera's view
+is calculated. It replaces the previous polling and asset-template preparation
+approach that could leave a briefly zoomed frame at camera changes.
 
-This update reduces the extra cinematic widening on already-wide lenses. Normal and tighter lenses retain the configured framing multiplier. The reference is a 35 mm lens on the game's 24.892 mm filmback width; equivalent lens angles on other filmback widths use the same rule. The base aspect-ratio correction is always retained. The helper reads the animated focal length and filmback width, and adjusts overscan only. It does not alter authored focal length or filmback.
+The included cinematic preset is 3.50. The lens-aware rule reduces additional
+widening for already-wide lenses while keeping the full setting for normal and
+tight lenses. Authored filmback and focal length remain intact. Valid cinematic
+crop ratios are used directly; otherwise sensor aspect is recomputed before the
+view calculation. Serialized MovieScene camera assets are left unchanged.
 
-Keep your existing E-Day-32x9-framing.txt when updating. The included preset remains 3.50; the live test used the user's custom 3.00 value. The user confirmed improved framing on the tested 21 mm shot. Results for the whole campaign have not been checked.
+## Installation
 
-This folder contains the full source for the lens-aware revision. The distributed executable is identified by DISTRIBUTED-BINARY-SHA256.txt.
+Copy these required runtime files beside GoWEDay-Steam.exe:
 
+- E-Day-32x9-FOV.exe
+- Launch-E-Day-32x9-FOV.bat
+- E-Day-32x9-framing.txt
+- E-Day-gameplay-fov.txt
 
-This is a separate version of the offline Steam cutscene fix. It retains the
-3.50 cinematic framing preset and adds a gameplay FOV input of **120**.
-The gameplay control uses the game's own gameplay settings multiplier; it does
-not change cinematic lenses or overwrite the final camera view every frame.
-Normal aiming and zoom calculations continue through the game's camera logic.
+Keep your existing text settings when updating. Restore the previous helper or
+close the game before replacing its executable. Keep Steam running, double-click
+Launch-E-Day-32x9-FOV.bat, enable Cinematic Ultrawide Support, and leave the launcher window open
+until the game exits. Apply-E-Day-32x9-FOV.bat and Restore-E-Day-32x9-FOV.bat are optional shortcuts. Run one
+cinematic variant at a time; they share a session guard.
 
-## Install and launch
+## Settings
 
-1. Extract the archive, then copy these four required runtime files beside
-   `GoWEDay-Steam.exe` in `FairlightConcept\Binaries\Win64`:
-   - Launch-E-Day-32x9-FOV.bat
-   - E-Day-32x9-FOV.exe
-   - E-Day-32x9-framing.txt
-   - E-Day-gameplay-fov.txt
-2. Keep Steam running and double-click **Launch-E-Day-32x9-FOV.bat**.
-3. Enable **Cinematic Ultrawide Support** for the cutscene fix.
-4. Leave the launcher window open until the game exits.
+E-Day-32x9-framing.txt contains one number from 1.00 through 8.00. The packaged
+default is 3.50. Larger values show more of the cinematic scene; the lens-aware
+limit still applies on wider lenses. Changes are read about every 250 ms.
+The viewport ratio is read from the game, rather than assuming a fixed pixel
+resolution. The live visual test used 5120 x 1440; other resolutions remain
+unverified. Turning Cinematic Ultrawide Support off restores authored framing
+for the compatible views.
 
-**Apply-E-Day-32x9-FOV.bat** and **Restore-E-Day-32x9-FOV.bat** are optional
-shortcuts; they are not required for launching the mod.
+E-Day-gameplay-fov.txt independently controls gameplay FOV. Its default is 120;
+accepted inputs are 60 through 150, including decimals. Set 0 to restore the
+game's own gameplay setting while retaining the cinematic fix. Invalid edits
+keep the last valid gameplay input. This changes the game's gameplay settings
+multiplier; aiming and special cameras continue through the game's camera logic
+and may render a different FOV. The in-game slider retains its usual range.
 
-For an already running offline session, use **Apply-E-Day-32x9-FOV.bat**.
-If the original cutscene helper is active, restore it first before applying
-this version. The two versions share a session guard and should not run
-simultaneously. Existing original-version files can remain beside these files.
-Both versions use the same cinematic framing text file; preserve your custom
-framing value when installing if you have changed it.
+## Restore
 
-## Customize gameplay FOV
+Run Restore-E-Day-32x9-FOV.bat to stop the helper and restore the memory values it owns.
+Closing the game discards all session changes. After restoring or closing,
+remove the chosen variant's runtime files to uninstall. Normal Steam launches
+do not start this helper automatically.
 
-Edit **E-Day-gameplay-fov.txt** beside the game executable. It contains one
-number, initially `120`. Accepted values are `60` through `150`, including
-decimals. Save the file to apply a change while the helper is running; it reads
-the setting about every 250 milliseconds. Resume gameplay after pausing so the
-camera can refresh.
+## Implementation and compatibility
 
-Use `0` to disable only the gameplay FOV override and restore the game's own
-setting. The cutscene fix continues running. Invalid or incomplete edits keep
-the last valid value; a missing configuration uses the default 120 on startup.
-This setting replaces the game's gameplay FOV input. The game's UI slider
-still displays and stores its normal 60-90 value. Aiming, sprinting, and special
-cameras can have their own dynamic framing, so the rendered FOV need not stay
-at the configured number in every state.
+The helper validates the supported camera layout and replaces one eight-byte
+virtual-method dispatch pointer in process memory. Its own allocated executable
+wrapper adjusts cinematic overscan and two camera flags, then tail-calls the
+original view method with its arguments preserved. It also changes the existing
+four-byte cinematic limit. The combined variant additionally adjusts gameplay
+FOV through its separate settings control.
 
-Edit **E-Day-32x9-framing.txt** separately to tune cutscenes. Its included value
-is `3.50`; accepted values are `1.00` through `8.00`. Larger values show more of
-the cinematic scene. This file does not control gameplay FOV.
+Game executable instructions and game files on disk are not patched. The new
+wrapper itself is executable code allocated in the running process. Restoration
+disables it, restores the dispatch pointer, waits for active wrapper entries,
+and restores owned camera data after identity checks. Roughly 1 MiB of ownership
+data and two 4 KiB pages are retained disabled until game exit after installation,
+to avoid freeing a wrapper while a thread could still be leaving it.
 
-## Restore and uninstall
+The launcher sets SteamAppId=3010850 and EOS_USE_ANTICHEATCLIENTNULL=1 only for
+its launch. It requires Steam and starts GoWEDay-Steam.exe directly from its own
+folder. It creates steam_appid.txt only when absent, refuses a different existing
+ID, preserves an existing correct file, waits for exit, and removes only its own
+created ID file. No permanent environment settings are changed.
 
-**Restore-E-Day-32x9-FOV.bat** stops the helper and restores its gameplay and
-cinematic memory changes. Closing the game also discards all process-memory
-changes. For a comparison of gameplay only, set E-Day-gameplay-fov.txt to `0`.
+Use the offline launch workflow. The existing anti-cheat/session checks remain.
+Supported test build: +++fenix2+fairlight-omega-release-CL-4894958. A different
+build prompts Yes/No before attempting compatibility checks; Yes does not bypass
+the required signatures. Startup waits for readiness without a fixed time limit.
+Unknown camera classes are excluded. The user confirmed no zoom flashes and
+correct framing in two tested cutscenes; the complete campaign, every special
+camera, other resolutions, and future builds have not been tested.
 
-To uninstall this variant, restore it or close the game, then remove its three
-FOV batch files, E-Day-32x9-FOV.exe, and E-Day-gameplay-fov.txt. The shared
-E-Day-32x9-framing.txt can remain if you use the original cutscene version.
-For a session without either helper, launch through Steam's normal Play button.
-
-## Compatibility and behavior
-
-Tested on the Steam full-game build
-`+++fenix2+fairlight-omega-release-CL-4894958` at 5120 x 1440. The user confirmed
-the 120 option visibly widened gameplay. Tests cover configuration parsing,
-cinematic-target gating, live configuration changes, restoration, and object
-identity checks. Every weapon, every camera mode, the full campaign, other
-resolutions, and future builds have not been checked.
-
-Other builds present the same Yes/No prompt. Yes allows a compatibility attempt;
-all cinematic and gameplay code signatures and object/value checks remain
-enabled. No skips the mod and keeps the launched game running. Initialization
-has no time limit and stops when ready or the game exits. Protected sessions
-are refused. Offline use only; no anti-cheat approval or online safety is claimed.
-
-The launcher starts GoWEDay-Steam.exe directly, requires Steam, and locally sets
-EOS_USE_ANTICHEATCLIENTNULL=1 and SteamAppId=3010850. It creates steam_appid.txt
-only if absent, preserves an existing correct ID, refuses a different ID,
-waits for game exit, and removes only the ID it created.
-
-This version changes the four-byte cinematic width constant, cinematic
-overscan/flags, and the validated gameplay camera manager's FOV multiplier in
-memory. It restores its own values when safe to do so and skips gameplay
-adjustment while a valid cinematic target is selected. It does not patch
-executable instructions, game files on disk, or permanent environment settings.
-The helper does not perform network communication or downloads.
-
-Windows PowerShell and .NET Framework 4.x are used. The high-resolution camera
-timer requires Windows 10 version 1803 or newer, plus the game's requirements.
-Full source and rebuild instructions for this revision are included in this folder and the separate source package. See BUILD-INSTRUCTIONS.md to compile it.
+Matching source and fixtures are included in the separate Source archive.
+This repository contains the complete source for this revision.

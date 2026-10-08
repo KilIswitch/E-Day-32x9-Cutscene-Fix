@@ -8,7 +8,7 @@ using System.Threading;
 using System.Security.Cryptography;
 using System.Text;
 
-// Runtime data-only fix for the Steam full game, CL 4894958.
+// Runtime cinematic fix for the Steam full game, CL 4894958.
 // No executable files are modified. Closing the game resets this change.
 public static class CinematicFix
 {
