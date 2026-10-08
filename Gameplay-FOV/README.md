@@ -1,5 +1,14 @@
 # E-Day 32:9 cutscenes + customizable gameplay FOV
 
+## Lens-aware cinematic framing
+
+This update reduces the extra cinematic widening on already-wide lenses. Normal and tighter lenses retain the configured framing multiplier. The reference is a 35 mm lens on the game's 24.892 mm filmback width; equivalent lens angles on other filmback widths use the same rule. The base aspect-ratio correction is always retained. The helper reads the animated focal length and filmback width, and adjusts overscan only. It does not alter authored focal length or filmback.
+
+Keep your existing E-Day-32x9-framing.txt when updating. The included preset remains 3.50; the live test used the user's custom 3.00 value. The user confirmed improved framing on the tested 21 mm shot. Results for the whole campaign have not been checked.
+
+This folder contains the full source for the lens-aware revision. The distributed executable is identified by DISTRIBUTED-BINARY-SHA256.txt.
+
+
 This is a separate version of the offline Steam cutscene fix. It retains the
 3.50 cinematic framing preset and adds a gameplay FOV input of **120**.
 The gameplay control uses the game's own gameplay settings multiplier; it does
@@ -40,7 +49,7 @@ Use `0` to disable only the gameplay FOV override and restore the game's own
 setting. The cutscene fix continues running. Invalid or incomplete edits keep
 the last valid value; a missing configuration uses the default 120 on startup.
 This setting replaces the game's gameplay FOV input. The game's UI slider
-still displays and stores its normal 60â€“90 value. Aiming, sprinting, and special
+still displays and stores its normal 60-90 value. Aiming, sprinting, and special
 cameras can have their own dynamic framing, so the rendered FOV need not stay
 at the configured number in every state.
 
@@ -88,5 +97,4 @@ The helper does not perform network communication or downloads.
 
 Windows PowerShell and .NET Framework 4.x are used. The high-resolution camera
 timer requires Windows 10 version 1803 or newer, plus the game's requirements.
-Full source and rebuild instructions are available in the [Gameplay-FOV folder](https://github.com/KilIswitch/E-Day-32x9-Cutscene-Fix/tree/main/Gameplay-FOV)
-and in the separate source package. See BUILD-INSTRUCTIONS.md to compile it.
+Full source and rebuild instructions for this revision are included in this folder and the separate source package. See BUILD-INSTRUCTIONS.md to compile it.

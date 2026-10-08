@@ -52,7 +52,10 @@ internal sealed class CameraSources
             if (viewport<=aspect+0.001f) continue;
             if (!CameraFraming.Same(current,camera.Applied)) camera.Original=current;
             camera.Aspect=aspect;
-            float desired=(1+camera.Original)*Math.Max(1,viewport/aspect)*extra-1;
+            float sensorWidth=BitConverter.ToSingle(Read(h,camera.Address+0xca4,4),0);
+            float focalLength=BitConverter.ToSingle(Read(h,camera.Address+0xd3c,4),0);
+            float lensExtra=CameraFraming.LensExtra(extra,sensorWidth,focalLength);
+            float desired=(1+camera.Original)*Math.Max(1,viewport/aspect)*lensExtra-1;
             if (!(desired>=0 && desired<=64)) continue;
             if (!CameraFraming.Same(current,desired)) CameraFraming.Write(h,camera.Address+0x2bc,BitConverter.GetBytes(desired));
             if (body[28]!=0 || body[29]!=0) CameraFraming.Write(h,camera.Address+0x2d0,new byte[]{0,0});
