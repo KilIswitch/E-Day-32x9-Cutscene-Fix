@@ -5,7 +5,15 @@
 - The repository root contains the original cutscene-only helper and its build instructions.
 - [Gameplay-FOV](Gameplay-FOV/README.md) contains the full source for the cutscene fix plus customizable gameplay FOV, default 120. Build that version using [Gameplay-FOV/BUILD-INSTRUCTIONS.md](Gameplay-FOV/BUILD-INSTRUCTIONS.md).
 
-The gameplay FOV version needs only four runtime files beside GoWEDay-Steam.exe:
+
+- [Gameplay-FOV-Only](Gameplay-FOV-Only/README.md) contains the separate gameplay-only version, default 120, which leaves cinematic framing unchanged. Build it using [Gameplay-FOV-Only/BUILD-INSTRUCTIONS.md](Gameplay-FOV-Only/BUILD-INSTRUCTIONS.md).
+
+For Nexus review of the two FOV versions, see [NEXUS-FOV-REVIEW.md](NEXUS-FOV-REVIEW.md). Each version has its own full source, build instructions, validation notes, and distributed executable hash.
+
+The gameplay-only version needs three runtime files: `E-Day-Gameplay-FOV.exe`,
+`Launch-E-Day-Gameplay-FOV.bat`, and `E-Day-gameplay-fov.txt`.
+
+The combined cutscene + gameplay FOV version needs only four runtime files beside GoWEDay-Steam.exe:
 `E-Day-32x9-FOV.exe`, `Launch-E-Day-32x9-FOV.bat`,
 `E-Day-gameplay-fov.txt`, and `E-Day-32x9-framing.txt`.
 Its Apply and Restore batch files are optional shortcuts. Compiled executables
