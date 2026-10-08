@@ -1,41 +1,17 @@
-Lens-aware cinematic update validation, 2026-10-07
+Synchronous cinematic correction, October 8 2026
 
-Steam full game CL 4894958, 5120 x 1440.
-The paused wide shot had a 21 mm animated lens on a 24.892 x 14.00173 mm
-filmback. At the user's custom framing value 3.00, the previous helper used
-overscan 4.999990. The adaptive trial used 2.599994. User: "looks good".
-A later 40 mm shot retained overscan 5, preserving the configured framing.
-Gameplay FOV override was suspended during both inspected cutscenes.
-The user's framing 3.00 and gameplay setting 100 were not modified.
+31 owned-memory frame-wrapper fixtures: first-view timing and arguments,
+wide/normal/tight lenses, stable crop/sensor calculation, no compounding,
+asset-template exclusion, off/on restoration, stale identities, invalid data,
+focal clamp, live framing input, slot reuse, dispatch restoration and idempotence.
+11 lens-policy fixtures. Combined variant additionally has 16 gameplay fixtures.
 
-Policy: retain the configured extra expansion for a 35 mm lens or tighter
-on a 24.892 mm sensor. Scale down additional expansion on wider lens angles,
-never below the base aspect-ratio correction. Filmback and focal length are
-read, never written. An additional native focal-field signature is validated.
-Original width, object, serial, anti-cheat and build checks remain enabled.
+Live prototype trace: eight cinematic cameras, 21/40/50/60/75 mm focal lengths,
+19,575 corrected view calls, zero table overflows, zero read failures, no recorded
+framing math mismatches. User tested the same cutscene and another with different
+lenses: "No flashes; framing looks right". The final source adds exclusion of
+serialized MovieScene camera assets; this guard has fixture coverage and leaves
+the tested runtime world cameras on the same correction path.
 
-Both supplied Build.bat scripts compiled successfully. Eleven adaptive lens
-checks passed, covering preservation of tight lenses, wide-lens reduction,
-setting customization, sensor-size equivalence, lower bound, invalid values,
-and consistent projection expansion. Sixteen combined gameplay FOV fixtures
-also passed, including cinematic exclusion, restoration, dynamic settings,
-invalid values, stale identities, and an untouched final-view cache.
-These fixtures allocated their own process memory and did not alter the game.
-A read-only live diagnostic validated all signatures in the release sources.
-
-The original helper was stopped using --restore before the trial began.
-The trial inherited and tracked the original overscan values correctly.
-No instructions, authored focal values, filmback, or game files were patched.
-The gameplay-only variant is unaffected by this change.
-
-Limits: user visual confirmation currently covers the tested wide shot.
-After watching more camera changes, the user reported: looks good man.
-This is visual feedback rather than an instrumented first-frame measurement. The whole campaign, other resolutions,
-and future builds have not been tested. Loaded template preparation remains
-in place; an animated lens can differ from a template's default lens, so
-fallback camera polling cannot guarantee every first frame is corrected.
-Previous successful camera-cut and 16:9 mode tests apply to the earlier version.
-No claim of Nexus approval or an independent security audit is made.
-A follow-up 100 mm shot lost framing when the testing helper stopped.
-Restarting the unchanged helper restored overscan 5, and the user
-confirmed the view was correct. This did not require a policy change.
+Installed framing and gameplay config file hashes are preserved during update.
+Only tested compatible cinematic views are confirmed; full campaign unverified.

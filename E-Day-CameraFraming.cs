@@ -7,8 +7,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-// Follows the cinematic subsystem's weak camera reference. It changes only
-// camera data, never instructions, and never scans or adjusts gameplay cameras.
+// Installs a validated cinematic view wrapper for this session. Framing
+// is corrected before the original view calculation; gameplay is separate.
 internal static class CameraFraming
 {
     internal sealed class FastWait : WaitHandle
@@ -66,7 +66,7 @@ internal static class CameraFraming
         if (Running(game)) { Console.WriteLine("Cinematic framing correction is already running."); return; }
         using (var ready=new EventWaitHandle(false,EventResetMode.ManualReset,Name(game,"Ready")))
         {
-            var info=new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"E-Day-32x9.exe"),"--pid "+game.Id+" --watch"+CinematicFix.WatcherBuildArgument(game));
+            var info=new ProcessStartInfo(Process.GetCurrentProcess().MainModule.FileName,"--pid "+game.Id+" --watch"+CinematicFix.WatcherBuildArgument(game));
             info.UseShellExecute=true; info.WindowStyle=ProcessWindowStyle.Hidden; info.WorkingDirectory=AppDomain.CurrentDomain.BaseDirectory;
             using (Process child=Process.Start(info))
             {
@@ -91,7 +91,6 @@ internal static class CameraFraming
         catch (WaitHandleCannotBeOpenedException) { }
     }
     internal class Ref { public long Address; public int Index,Serial; }
-    internal sealed class Camera : Ref { public float Original,Applied,Aspect; public byte Scale,Crop; }
     internal sealed class Objects
     {
         public IntPtr H; public long Chunks; public int Count;
@@ -143,145 +142,60 @@ internal static class CameraFraming
     }
     public static void Watch(Process game)
     {
-        using (var mutex=new Mutex(false,Name(game,"Camera")))
+        using(var mutex=new Mutex(false,Name(game,"Camera")))
         {
             bool owned;
-            try { owned=mutex.WaitOne(0); } catch (AbandonedMutexException) { owned=true; }
-            if (!owned) return;
-            IntPtr h=IntPtr.Zero; var changed=new Dictionary<string,Camera>();
-            using (var stop=new EventWaitHandle(false,EventResetMode.ManualReset,Name(game,"Stop")))
-            using (var ready=new EventWaitHandle(false,EventResetMode.ManualReset,Name(game,"Ready")))
+            try { owned=mutex.WaitOne(0); } catch(AbandonedMutexException) { owned=true; }
+            if(!owned) return;
+            IntPtr h=IntPtr.Zero; CameraFrameGate gate=null;
+            using(var stop=new EventWaitHandle(false,EventResetMode.ManualReset,Name(game,"Stop")))
+            using(var ready=new EventWaitHandle(false,EventResetMode.ManualReset,Name(game,"Ready")))
             try
             {
-                h=OpenProcess(0x438,false,game.Id); if (h==IntPtr.Zero) throw new Win32Exception();
+                h=OpenProcess(0xc38,false,game.Id); if(h==IntPtr.Zero) throw new Win32Exception();
                 long basis=game.MainModule.BaseAddress.ToInt64(); ValidateMarkers(h,basis);
-                var natives=new List<Ref>(); var managers=new List<Ref>(); var search=Stopwatch.StartNew(); bool searched=false;
-                var config=Stopwatch.StartNew(); var sourceTimer=Stopwatch.StartNew();
-                var sourceCameras=new CameraSources(h,basis); bool sourcesPrepared=false;
-                float extra=ReadExtraView(); int delay=1;
-                using (var tick=new FastWait())
+                gate=new CameraFrameGate(h,basis);
+                var managers=new List<Ref>(); var search=Stopwatch.StartNew(); bool searched=false;
+                var config=Stopwatch.StartNew(); float extra=ReadExtraView(); bool configured=false;
+                using(var tick=new FastWait())
                 {
-                ready.Set();
-                while (tick.Wait(stop,delay) && !game.HasExited)
-                {
-                    try
+                    ready.Set();
+                    while(tick.Wait(stop,20) && !game.HasExited)
                     {
-                    Objects objects;
-                    try { objects=new Objects(h,basis); } catch (Win32Exception) { continue; }
-                    long cls=Q(h,basis+ClassRva);
-                    natives.RemoveAll(value=>!objects.Valid(value,false) || Q(h,value.Address+16)!=cls);
-                    managers.RemoveAll(value=>!objects.Valid(value,false));
-                    long managerClass=Q(h,basis+0xed6a080);
-                    if ((natives.Count==0 || managers.Count==0) && (!searched || search.ElapsedMilliseconds>3000))
-                    {
-                        if (cls!=0 && natives.Count==0) natives=objects.FindNative(cls);
-                        if (managerClass!=0 && managers.Count==0) managers=objects.FindNative(managerClass,true);
-                        searched=true; search.Restart();
-                    }
-                    if (!Read(h,basis+0xe2189dc,4).SequenceEqual(new byte[]{0x39,0x8e,0x63,0x40})) break;
-                    if (config.ElapsedMilliseconds>=250) { extra=ReadExtraView(); config.Restart(); }
-                    bool cinematicFillActive=false;
-                    var targetsByActor=new Dictionary<long,float>();
-                    foreach (Ref manager in managers)
-                    {
-                        float fill=BitConverter.ToSingle(Read(h,manager.Address+0x3a04,4),0);
-                        if (!(fill>=0 && fill<=5120f/1440f+0.001f)) continue;
-                        long targets=Q(h,manager.Address+0x3e10); if (targets==0) continue;
-                        byte[] target=Read(h,targets+24,8); int ti=BitConverter.ToInt32(target,0), ts=BitConverter.ToInt32(target,4);
-                        byte[] targetItem=objects.Item(ti);
-                        if (ts==0 || targetItem==null || BitConverter.ToInt32(targetItem,16)!=ts || (BitConverter.ToUInt32(targetItem,8)&0x10200000)!=0) continue;
-                        long actor=BitConverter.ToInt64(targetItem,0); if (actor==0) continue;
-                        targetsByActor[actor]=fill; if (fill>1) cinematicFillActive=true;
-                    }
-                    delay=cinematicFillActive ? 1 : 20;
-                    if (cinematicFillActive && (!sourcesPrepared || sourceTimer.ElapsedMilliseconds>=250))
-                    {
-                        sourceCameras.Refresh(objects);
-                        sourceCameras.Prepare(objects,targetsByActor.Values.Max(),extra,changed);
-                        sourcesPrepared=true; sourceTimer.Restart();
-                    }
-                    var weakCameras=new List<byte[]>();
-                    foreach (Ref native in natives)
-                        weakCameras.Add(Read(h,native.Address+0x214,8));
-                    foreach (long actor in targetsByActor.Keys)
-                    {
-                        if (Q(h,actor)!=basis+0xd365158) continue;
-                        long component=Q(h,actor+0xce0); if (component==0) continue;
-                        int componentIndex=I(h,component+12); byte[] componentItem=objects.Item(componentIndex);
-                        if (componentItem==null || BitConverter.ToInt64(componentItem,0)!=component) continue;
-                        byte[] weak=new byte[8]; Array.Copy(BitConverter.GetBytes(componentIndex),weak,4); Array.Copy(componentItem,16,weak,4,4);
-                        weakCameras.Add(weak);
-                    }
-                    var visited=new HashSet<string>();
-                    foreach (byte[] weak in weakCameras)
-                    {
-                        int index=BitConverter.ToInt32(weak,0), serial=BitConverter.ToInt32(weak,4);
-                        if (index<0 || !visited.Add(index+":"+serial)) continue;
-                        byte[] item=objects.Item(index); if (item==null || BitConverter.ToInt32(item,16)!=serial || (BitConverter.ToUInt32(item,8)&0x10200000)!=0) continue;
-                        long addr=BitConverter.ToInt64(item,0); if (addr==0) continue;
-                        byte[] body=Read(h,addr,0xd40);
-                        if (BitConverter.ToInt64(body,0)!=basis+CineVtableRva || BitConverter.ToInt32(body,12)!=index || (BitConverter.ToUInt32(body,8)&0x30)!=0) continue;
-                        float viewport; long outer=BitConverter.ToInt64(body,32);
-                        if (!targetsByActor.TryGetValue(outer,out viewport)) continue;
-                        float aspect=BitConverter.ToSingle(body,0x2b4), current=BitConverter.ToSingle(body,0x2bc);
-                        if (!(aspect>0.5f && aspect<8 && current>=0 && current<=64) || body[0x2d0]>1 || body[0x2d1]>1) continue;
-                        Camera inherited=sourceCameras.Inherited(outer,current);
-                        if (viewport<=1)
+                        try
                         {
-                            if (inherited!=null)
+                            var objects=new Objects(h,basis);
+                            managers.RemoveAll(value=>!objects.Valid(value,true));
+                            if(managers.Count==0 && (!searched || search.ElapsedMilliseconds>=3000))
                             {
-                                var inheritedCamera=new Camera {Address=addr,Index=index,Serial=serial,Original=inherited.Original,Applied=current,Scale=inherited.Scale,Crop=inherited.Crop};
-                                RestoreCamera(h,objects,inheritedCamera);
+                                long cls=Q(h,basis+0xed6a080);
+                                if(cls!=0) managers=objects.FindNative(cls,true);
+                                searched=true; search.Restart(); configured=false;
                             }
-                            continue;
+                            if(!Read(h,basis+0xe2189dc,4).SequenceEqual(new byte[]{0x39,0x8e,0x63,0x40})) break;
+                            if(!configured || config.ElapsedMilliseconds>=250)
+                            {
+                                extra=ReadExtraView(); gate.Update(objects,managers,extra);
+                                configured=true; config.Restart();
+                            }
                         }
-                        string key=index+":"+serial; Camera saved;
-                        if (!changed.TryGetValue(key,out saved))
-                        {
-                            if (viewport<=aspect+0.001f) continue;
-                            saved=new Camera{Address=addr,Index=index,Serial=serial,Original=inherited==null ? current : inherited.Original,Applied=current,Aspect=aspect,Scale=inherited==null ? body[0x2d0] : inherited.Scale,Crop=inherited==null ? body[0x2d1] : inherited.Crop};
-                            changed.Add(key,saved);
-                        }
-                        else
-                        {
-                            // Preserve new overscan values authored by cinematic animation.
-                            if (!Same(current,saved.Applied)) saved.Original=current;
-                            saved.Aspect=aspect;
-                        }
-                        float lensExtra=LensExtra(extra,BitConverter.ToSingle(body,0xca4),BitConverter.ToSingle(body,0xd3c));
-                        float desired=(1+saved.Original)*Math.Max(1,viewport/saved.Aspect)*lensExtra-1;
-                        if (!(desired>=0 && desired<=64)) continue;
-                        if (!objects.Valid(saved,true)) continue;
-                        if (!Same(current,desired)) Write(h,addr+0x2bc,BitConverter.GetBytes(desired));
-                        if (body[0x2d0]!=0 || body[0x2d1]!=0) Write(h,addr+0x2d0,new byte[]{0,0});
-                        saved.Applied=desired;
+                        catch(Win32Exception) { if(game.HasExited) break; }
                     }
-                    // Keep outgoing cinematic cameras ready for a returning shot.
-                    // Restore all tracked cameras when cinematic fill turns off or ends.
-                    foreach (string key in changed.Keys.Where(key=>!cinematicFillActive || !objects.Valid(changed[key],true)).ToArray())
-                    { RestoreCamera(h,objects,changed[key]); changed.Remove(key); }
-                    }
-                    catch (Win32Exception) { if (game.HasExited) break; }
-                }
                 }
             }
             finally
             {
                 try
                 {
-                if (h!=IntPtr.Zero)
-                {
-                    if (!game.HasExited)
+                    if(h!=IntPtr.Zero && !game.HasExited)
                     {
-                        var objects=new Objects(h,game.MainModule.BaseAddress.ToInt64());
-                        foreach (Camera camera in changed.Values) RestoreCamera(h,objects,camera);
+                        if(gate!=null) gate.Dispose();
                     }
-                }
                 }
                 finally
                 {
-                    if (h!=IntPtr.Zero) CloseHandle(h);
-                    try { if (!game.HasExited) CinematicFix.Apply(game,false,true); }
+                    if(h!=IntPtr.Zero) CloseHandle(h);
+                    try { if(!game.HasExited) CinematicFix.Apply(game,false,true); }
                     finally { mutex.ReleaseMutex(); }
                 }
             }
@@ -297,15 +211,13 @@ internal static class CameraFraming
         double lensRatio=(double)sensorWidth/focalLength;
         return (float)Math.Max(1,Math.Min(extra,extra*referenceRatio/lensRatio));
     }
-    internal static bool Same(float a,float b) { return Math.Abs(a-b)<0.00001f; }
-    static void RestoreCamera(IntPtr h,Objects objects,Camera camera)
+    internal static float EffectiveAspect(float aspect,float cropAspect)
     {
-        if (!objects.Valid(camera,true)) return;
-        if (Same(BitConverter.ToSingle(Read(h,camera.Address+0x2bc,4),0),camera.Applied))
-            Write(h,camera.Address+0x2bc,BitConverter.GetBytes(camera.Original));
-        byte[] flags=Read(h,camera.Address+0x2d0,2);
-        if (flags[0]==0 && flags[1]==0) Write(h,camera.Address+0x2d0,new byte[]{camera.Scale,camera.Crop});
+        // UCineCameraComponent applies the crop after refreshing sensor aspect.
+        // Use the final crop to avoid chasing the intermediate sensor value.
+        return cropAspect>0.5f && cropAspect<8 ? cropAspect : aspect;
     }
+    internal static bool Same(float a,float b) { return Math.Abs(a-b)<0.00001f; }
     static float ReadExtraView()
     {
         float value;

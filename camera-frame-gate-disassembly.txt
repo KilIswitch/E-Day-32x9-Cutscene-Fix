@@ -1,0 +1,245 @@
+0000: push rbx
+0001: sub rsp, 0x70
+0005: mov rbx, rcx
+0008: mov qword ptr [rsp + 0x28], r8
+000d: mov qword ptr [rsp + 0x30], rdx
+0012: mov qword ptr [rsp + 0x38], r9
+0017: movdqu xmmword ptr [rsp + 0x40], xmm1
+001d: movabs r10, 0x1122334455667788
+0027: lock inc qword ptr [r10 + 0x40]
+002c: cmp dword ptr [r10], 0
+0030: je 0x465
+0036: mov rax, qword ptr [r10 + 0x30]
+003a: cmp qword ptr [rbx], rax
+003d: jne 0x465
+0043: test dword ptr [rbx + 8], 0x30
+004a: jne 0x465
+0050: mov rax, qword ptr [rbx + 0x20]
+0054: test rax, rax
+0057: je 0x465
+005d: mov rax, qword ptr [rax + 0x20]
+0061: test rax, rax
+0064: je 0x465
+006a: mov rdx, qword ptr [r10 + 0xb8]
+0071: cmp qword ptr [rax], rdx
+0074: je 0x465
+007a: mov rax, qword ptr [r10 + 8]
+007e: mov r11, qword ptr [rax]
+0081: xor r11, qword ptr [r10 + 0x10]
+0085: test r11, r11
+0088: je 0x465
+008e: mov ecx, dword ptr [rbx + 0xc]
+0091: cmp ecx, dword ptr [r11 + 0x24]
+0095: jae 0x465
+009b: mov dword ptr [rsp + 0x6c], ecx
+009f: mov edx, ecx
+00a1: shr edx, 0x10
+00a4: mov rax, qword ptr [r11 + 0x10]
+00a8: test rax, rax
+00ab: je 0x465
+00b1: mov rax, qword ptr [rax + rdx*8]
+00b5: and ecx, 0xffff
+00bb: imul rcx, rcx, 0x18
+00bf: add rax, rcx
+00c2: cmp qword ptr [rax], rbx
+00c5: jne 0x465
+00cb: test dword ptr [rax + 8], 0x10200000
+00d2: jne 0x465
+00d8: mov edx, dword ptr [rax + 0x10]
+00db: mov dword ptr [rsp + 0x68], edx
+00df: mov eax, dword ptr [rsp + 0x6c]
+00e3: and eax, dword ptr [r10 + 0x98]
+00ea: shl rax, 5
+00ee: mov r8, qword ptr [r10 + 0x90]
+00f5: add r8, rax
+00f8: mov r9d, dword ptr [r10 + 0x9c]
+00ff: mov rax, qword ptr [r8]
+0102: test rax, rax
+0105: je 0x197
+010b: cmp rax, rbx
+010e: jne 0x11e
+0110: mov eax, dword ptr [rsp + 0x68]
+0114: cmp eax, dword ptr [r8 + 0xc]
+0118: je 0x203
+011e: mov ecx, dword ptr [r8 + 8]
+0122: cmp ecx, dword ptr [r11 + 0x24]
+0126: jae 0x197
+0128: mov edx, ecx
+012a: shr edx, 0x10
+012d: mov rax, qword ptr [r11 + 0x10]
+0131: mov rax, qword ptr [rax + rdx*8]
+0135: and ecx, 0xffff
+013b: imul rcx, rcx, 0x18
+013f: add rax, rcx
+0142: mov ecx, dword ptr [r8 + 0xc]
+0146: cmp dword ptr [rax + 0x10], ecx
+0149: jne 0x197
+014b: mov rcx, qword ptr [r8]
+014e: cmp qword ptr [rax], rcx
+0151: jne 0x197
+0153: test dword ptr [rax + 8], 0x10200000
+015a: jne 0x197
+015c: add r8, 0x20
+0160: mov rax, qword ptr [r10 + 0x90]
+0167: mov ecx, dword ptr [r10 + 0x9c]
+016e: shl rcx, 5
+0172: add rax, rcx
+0175: cmp r8, rax
+0178: jb 0x181
+017a: mov r8, qword ptr [r10 + 0x90]
+0181: dec r9d
+0184: jne 0xff
+018a: lock inc qword ptr [r10 + 0x88]
+0192: jmp 0x465
+0197: movss xmm0, dword ptr [rbx + 0x2bc]
+019f: xorps xmm4, xmm4
+01a2: comiss xmm0, xmm4
+01a5: jp 0x465
+01ab: jb 0x465
+01b1: comiss xmm0, dword ptr [r10 + 0x7c]
+01b6: ja 0x465
+01bc: movzx eax, word ptr [rbx + 0x2d0]
+01c3: test eax, 0xfefe
+01c8: jne 0x465
+01ce: mov qword ptr [r8], 0
+01d5: mov word ptr [r8 + 0x18], ax
+01da: movss dword ptr [r8 + 0x10], xmm0
+01e0: movss dword ptr [r8 + 0x14], xmm0
+01e6: mov eax, dword ptr [rsp + 0x6c]
+01ea: mov dword ptr [r8 + 8], eax
+01ee: mov eax, dword ptr [rsp + 0x68]
+01f2: mov dword ptr [r8 + 0xc], eax
+01f6: mov dword ptr [r8 + 0x1c], 0
+01fe: mov qword ptr [r8], rbx
+0201: jmp 0x24a
+0203: movss xmm0, dword ptr [rbx + 0x2bc]
+020b: xorps xmm4, xmm4
+020e: comiss xmm0, xmm4
+0211: jp 0x465
+0217: jb 0x465
+021d: comiss xmm0, dword ptr [r10 + 0x7c]
+0222: ja 0x465
+0228: movss xmm1, dword ptr [r8 + 0x14]
+022e: subss xmm1, xmm0
+0232: andps xmm1, xmmword ptr [r10 + 0xa0]
+023a: comiss xmm1, dword ptr [r10 + 0xb0]
+0242: jbe 0x24a
+0244: movss dword ptr [r8 + 0x10], xmm0
+024a: mov qword ptr [rsp + 0x60], r8
+024f: mov ecx, dword ptr [r10 + 0x20]
+0253: cmp ecx, dword ptr [r11 + 0x24]
+0257: jae 0x415
+025d: mov edx, ecx
+025f: shr edx, 0x10
+0262: mov rax, qword ptr [r11 + 0x10]
+0266: mov rax, qword ptr [rax + rdx*8]
+026a: and ecx, 0xffff
+0270: imul rcx, rcx, 0x18
+0274: add rax, rcx
+0277: mov ecx, dword ptr [r10 + 0x24]
+027b: cmp dword ptr [rax + 0x10], ecx
+027e: jne 0x415
+0284: test dword ptr [rax + 8], 0x10200000
+028b: jne 0x415
+0291: mov rcx, qword ptr [r10 + 0x18]
+0295: cmp qword ptr [rax], rcx
+0298: jne 0x415
+029e: mov rdx, qword ptr [r10 + 0x28]
+02a2: cmp qword ptr [rcx], rdx
+02a5: jne 0x415
+02ab: movss xmm2, dword ptr [rcx + 0x3a04]
+02b3: comiss xmm2, dword ptr [r10 + 0x60]
+02b8: jbe 0x415
+02be: comiss xmm2, dword ptr [r10 + 0x78]
+02c3: ja 0x415
+02c9: mov rax, qword ptr [rbx + 0x20]
+02cd: test rax, rax
+02d0: je 0x415
+02d6: mov rdx, qword ptr [r10 + 0x38]
+02da: cmp qword ptr [rax], rdx
+02dd: jne 0x415
+02e3: movss xmm0, dword ptr [rbx + 0xd38]
+02eb: comiss xmm0, dword ptr [r10 + 0x6c]
+02f0: jbe 0x2f9
+02f2: comiss xmm0, dword ptr [r10 + 0x68]
+02f7: jb 0x311
+02f9: movss xmm0, dword ptr [rbx + 0xca4]
+0301: mulss xmm0, dword ptr [rbx + 0xccc]
+0309: divss xmm0, dword ptr [rbx + 0xca8]
+0311: comiss xmm0, dword ptr [r10 + 0x6c]
+0316: jbe 0x415
+031c: comiss xmm0, dword ptr [r10 + 0x68]
+0321: jae 0x415
+0327: divss xmm2, xmm0
+032b: maxss xmm2, dword ptr [r10 + 0x60]
+0331: movss xmm3, dword ptr [r10 + 4]
+0337: movss xmm4, dword ptr [rbx + 0xca4]
+033f: xorps xmm0, xmm0
+0342: comiss xmm4, xmm0
+0345: jbe 0x39b
+0347: comiss xmm4, dword ptr [r10 + 0x74]
+034c: ja 0x39b
+034e: movss xmm5, dword ptr [rbx + 0xd3c]
+0356: movss xmm0, dword ptr [rbx + 0xcbc]
+035e: maxss xmm0, dword ptr [rbx + 0xcb8]
+0366: minss xmm5, xmm0
+036a: maxss xmm5, dword ptr [rbx + 0xcb8]
+0372: xorps xmm0, xmm0
+0375: comiss xmm5, xmm0
+0378: jbe 0x39b
+037a: comiss xmm5, dword ptr [r10 + 0x70]
+037f: ja 0x39b
+0381: mulss xmm3, dword ptr [r10 + 0x64]
+0387: mulss xmm3, xmm5
+038b: divss xmm3, xmm4
+038f: minss xmm3, dword ptr [r10 + 4]
+0395: maxss xmm3, dword ptr [r10 + 0x60]
+039b: movss xmm0, dword ptr [r8 + 0x10]
+03a1: addss xmm0, dword ptr [r10 + 0x60]
+03a7: mulss xmm0, xmm2
+03ab: mulss xmm0, xmm3
+03af: subss xmm0, dword ptr [r10 + 0x60]
+03b5: xorps xmm4, xmm4
+03b8: comiss xmm0, xmm4
+03bb: jp 0x415
+03bd: jb 0x415
+03bf: comiss xmm0, dword ptr [r10 + 0x7c]
+03c4: ja 0x415
+03c6: movzx eax, word ptr [rbx + 0x2d0]
+03cd: test eax, 0xfefe
+03d2: jne 0x415
+03d4: movss dword ptr [rbx + 0x2bc], xmm0
+03dc: mov word ptr [rbx + 0x2d0], 0
+03e5: movss dword ptr [r8 + 0x14], xmm0
+03eb: inc dword ptr [r8 + 0x1c]
+03ef: lock inc qword ptr [r10 + 0x48]
+03f4: mov qword ptr [r10 + 0x50], rbx
+03f8: movss dword ptr [r10 + 0x58], xmm3
+03fe: movss dword ptr [r10 + 0x5c], xmm0
+0404: movss xmm4, dword ptr [r8 + 0x10]
+040a: movss dword ptr [r10 + 0x80], xmm4
+0413: jmp 0x465
+0415: movss xmm0, dword ptr [rbx + 0x2bc]
+041d: movss xmm1, dword ptr [r8 + 0x14]
+0423: subss xmm1, xmm0
+0427: andps xmm1, xmmword ptr [r10 + 0xa0]
+042f: comiss xmm1, dword ptr [r10 + 0xb0]
+0437: jp 0x465
+0439: ja 0x465
+043b: movss xmm0, dword ptr [r8 + 0x10]
+0441: movss dword ptr [rbx + 0x2bc], xmm0
+0449: movss dword ptr [r8 + 0x14], xmm0
+044f: cmp word ptr [rbx + 0x2d0], 0
+0457: jne 0x465
+0459: movzx eax, word ptr [r8 + 0x18]
+045e: mov word ptr [rbx + 0x2d0], ax
+0465: lock dec qword ptr [r10 + 0x40]
+046a: mov rcx, rbx
+046d: mov r8, qword ptr [rsp + 0x28]
+0472: mov rdx, qword ptr [rsp + 0x30]
+0477: mov r9, qword ptr [rsp + 0x38]
+047c: movdqu xmm1, xmmword ptr [rsp + 0x40]
+0482: add rsp, 0x70
+0486: pop rbx
+0487: movabs rax, 0x2233445566778899
+0491: jmp rax

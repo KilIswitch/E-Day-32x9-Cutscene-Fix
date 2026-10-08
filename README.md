@@ -1,137 +1,86 @@
-# E-Day 32:9 cinematic fix - source and build instructions
+# E-Day synchronous cinematic framing fix
 
-## Versions
+This version corrects cinematic framing before each compatible camera's view
+is calculated. It replaces the previous polling and asset-template preparation
+approach that could leave a briefly zoomed frame at camera changes.
 
-- The repository root contains the lens-aware cutscene-only helper and its build instructions.
-- [Gameplay-FOV](Gameplay-FOV/README.md) contains the full source for the cutscene fix plus customizable gameplay FOV, default 120. Build that version using [Gameplay-FOV/BUILD-INSTRUCTIONS.md](Gameplay-FOV/BUILD-INSTRUCTIONS.md).
+The included cinematic preset is 3.50. The lens-aware rule reduces additional
+widening for already-wide lenses while keeping the full setting for normal and
+tight lenses. Authored filmback and focal length remain intact. Valid cinematic
+crop ratios are used directly; otherwise sensor aspect is recomputed before the
+view calculation. Serialized MovieScene camera assets are left unchanged.
 
+## Source variants
 
-- [Gameplay-FOV-Only](Gameplay-FOV-Only/README.md) contains the separate gameplay-only version, default 120, which leaves cinematic framing unchanged. Build it using [Gameplay-FOV-Only/BUILD-INSTRUCTIONS.md](Gameplay-FOV-Only/BUILD-INSTRUCTIONS.md).
+The repository root builds the cutscene-only helper. [Gameplay-FOV](Gameplay-FOV/)
+builds the combined cutscene and gameplay FOV helper. [Gameplay-FOV-Only](Gameplay-FOV-Only/)
+contains the separate gameplay-only helper, unchanged in this revision.
 
-For Nexus review of all three versions, see [NEXUS-FOV-REVIEW.md](NEXUS-FOV-REVIEW.md). Each version has its own full source, build instructions, validation notes, and distributed executable hash.
+Run Build.bat in the chosen folder; see [build instructions](BUILD-INSTRUCTIONS.md).
+Run Test.bat for the cinematic fixtures (42 checks here, 58 in Gameplay-FOV).
+See [Nexus review guide](NEXUS-FOV-REVIEW.md) for all distributed binary hashes.
+Compiled executables are excluded from this source repository.
 
-The gameplay-only version needs three runtime files: `E-Day-Gameplay-FOV.exe`,
-`Launch-E-Day-Gameplay-FOV.bat`, and `E-Day-gameplay-fov.txt`.
+## Installation
 
-The combined cutscene + gameplay FOV version needs only four runtime files beside GoWEDay-Steam.exe:
-`E-Day-32x9-FOV.exe`, `Launch-E-Day-32x9-FOV.bat`,
-`E-Day-gameplay-fov.txt`, and `E-Day-32x9-framing.txt`.
-Its Apply and Restore batch files are optional shortcuts. Compiled executables
-are excluded from this source repository; the build scripts produce them locally.
+Copy these required runtime files beside GoWEDay-Steam.exe:
 
+- E-Day-32x9.exe
+- Launch-E-Day-32x9.bat
+- E-Day-32x9-framing.txt
 
-This repository contains the full source for the E-Day 32:9 helper and the readable
-batch launch/apply/restore scripts. No repository, package manager, game files,
-or external libraries are needed to compile the application.
+Keep your existing text settings when updating. Restore the previous helper or
+close the game before replacing its executable. Keep Steam running, double-click
+Launch-E-Day-32x9.bat, enable Cinematic Ultrawide Support, and leave the launcher window open
+until the game exits. Apply-E-Day-32x9.bat and Restore-E-Day-Cutscenes.bat are optional shortcuts. Run one
+cinematic variant at a time; they share a session guard.
 
-## Lens-aware cinematic update
+## Settings
 
-The root cutscene-only version and the combined Gameplay-FOV version now reduce
-extra expansion on already-wide cinematic lenses. Normal and tighter lens angles
-retain the configured framing multiplier. This helps shots that looked distorted
-under a fixed multiplier without reducing the framing of tight shots.
+E-Day-32x9-framing.txt contains one number from 1.00 through 8.00. The packaged
+default is 3.50. Larger values show more of the cinematic scene; the lens-aware
+limit still applies on wider lenses. Changes are read about every 250 ms.
+The viewport ratio is read from the game, rather than assuming a fixed pixel
+resolution. The live visual test used 5120 x 1440; other resolutions remain
+unverified. Turning Cinematic Ultrawide Support off restores authored framing
+for the compatible views.
 
-The reference lens is 35 mm on the game's 24.892 mm sensor width. Equivalent
-angles on different filmbacks use the same rule. The base aspect correction is
-always retained. The helper reads the animated focal length and sensor width;
-only overscan is adjusted. Authored focal length and filmback remain unchanged.
-An additional native focal-field signature is checked before applying the fix.
+## Restore
 
-Keep your existing framing text file during an update. The supplied preset
-remains 3.50. The visual test used the user's custom 3.00 setting on a 21 mm shot.
-The user confirmed the result and later camera changes looked good. 40, 75,
-and 100 mm shots retained full configured framing. Gameplay-FOV-Only is unchanged.
-See [validation](VALIDATION.txt) and [combined validation](Gameplay-FOV/VALIDATION.txt).
-The full campaign and every first camera frame have not been independently checked.
+Run Restore-E-Day-Cutscenes.bat to stop the helper and restore the memory values it owns.
+Closing the game discards all session changes. After restoring or closing,
+remove the chosen variant's runtime files to uninstall. Normal Steam launches
+do not start this helper automatically.
 
-Both cinematic versions include LensAdaptiveTests.cs for 11 calculation checks.
-It is excluded from the normal helper build. To run it from the repository root:
+## Implementation and compatibility
 
-```bat
-"%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:exe /platform:x64 /main:LensAdaptiveTests /out:"Build\LensAdaptiveTests.exe" "LensAdaptiveTests.cs" "E-Day-32x9.cs" "E-Day-CameraFraming.cs" "E-Day-CameraSources.cs"
-"Build\LensAdaptiveTests.exe"
-```
+The helper validates the supported camera layout and replaces one eight-byte
+virtual-method dispatch pointer in process memory. Its own allocated executable
+wrapper adjusts cinematic overscan and two camera flags, then tail-calls the
+original view method with its arguments preserved. It also changes the existing
+four-byte cinematic limit. The combined variant additionally adjusts gameplay
+FOV through its separate settings control.
 
-Run Build.bat first to create the Build directory. For the combined test, run
-from Gameplay-FOV and add E-Day-GameplayFov.cs to the compiler source arguments.
-The gameplay configuration/memory fixtures remain separately documented there.
+Game executable instructions and game files on disk are not patched. The new
+wrapper itself is executable code allocated in the running process. Restoration
+disables it, restores the dispatch pointer, waits for active wrapper entries,
+and restores owned camera data after identity checks. Roughly 1 MiB of ownership
+data and two 4 KiB pages are retained disabled until game exit after installation,
+to avoid freeing a wrapper while a thread could still be leaving it.
 
-## Prerequisites
+The launcher sets SteamAppId=3010850 and EOS_USE_ANTICHEATCLIENTNULL=1 only for
+its launch. It requires Steam and starts GoWEDay-Steam.exe directly from its own
+folder. It creates steam_appid.txt only when absent, refuses a different existing
+ID, preserves an existing correct file, waits for exit, and removes only its own
+created ID file. No permanent environment settings are changed.
 
-Use 64-bit Windows with the .NET Framework 4.x compiler available at:
+Use the offline launch workflow. The existing anti-cheat/session checks remain.
+Supported test build: +++fenix2+fairlight-omega-release-CL-4894958. A different
+build prompts Yes/No before attempting compatibility checks; Yes does not bypass
+the required signatures. Startup waits for readiness without a fixed time limit.
+Unknown camera classes are excluded. The user confirmed no zoom flashes and
+correct framing in two tested cutscenes; the complete campaign, every special
+camera, other resolutions, and future builds have not been tested.
 
-`%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe`
-
-The path's v4.0.30319 component is the .NET Framework directory name. The actual
-compiler version can be recorded using `csc.exe /help`. Windows PowerShell is
-used by the runtime launcher, not by the compiler. Runtime camera timing uses
-the high-resolution waitable timer supported by Windows 10 version 1803 onward.
-The game has its own Windows requirements.
-
-## Build using the supplied script
-
-1. Download and extract this repository, or clone it, into a writable local directory.
-2. Open the repository directory containing Build.bat and the three C# source files.
-3. Double-click Build.bat. It compiles the three C# files into
-   `Build\E-Day-32x9.exe`, displays the result, and waits for a key press.
-4. A successful build exits with code 0. Build.bat does not run the helper, launch
-   the game, download dependencies, or require administrator privileges.
-
-For unattended compilation, run `Build.bat --no-pause` from Command Prompt.
-
-## Equivalent manual compilation
-
-Open Command Prompt in the repository root directory and run:
-
-```bat
-if not exist Build mkdir Build
-"%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:exe /platform:x64 /out:"Build\E-Day-32x9.exe" "E-Day-32x9.cs" "E-Day-CameraFraming.cs" "E-Day-CameraSources.cs"
-```
-
-Entry point: `CinematicFix.Main` in E-Day-32x9.cs. Target: x64 Windows console
-application. All dependencies are framework assemblies or Windows kernel32
-APIs. There are no embedded assets, generated-source prerequisites, NuGet
-dependencies, external DLLs, obfuscation, packing, or post-build steps.
-
-## Source map
-
-- E-Day-32x9.cs: arguments, build prompt, compatibility checks, cinematic width
-  constant, initialization retrying, and main entry point.
-- E-Day-CameraFraming.cs: camera validation, object identities, overscan changes,
-  timer, background process management, configuration reading, and restoration.
-- E-Day-CameraSources.cs: loaded sequence camera template preparation and
-  inherited-overscan tracking to avoid the camera-cut zoom flash.
-- *.bat: full readable source for the three user entry points.
-- E-Day-32x9-framing.txt: included preset, 3.50.
-- DISTRIBUTED-BINARY-SHA256.txt: hash of the distributed binary submitted for review. The compiled binary is not stored in this source repository.
-
-## Binary comparison
-
-SHA256SUMS.txt identifies the supplied source and documentation files.
-DISTRIBUTED-BINARY-SHA256.txt identifies the distributed binary submitted for
-review. A rebuilt binary may differ because of compiler version, PE timestamps,
-and generated module metadata. No byte-for-byte reproducibility claim is made.
-Compare source, compiler settings, imports, and disassembled managed code when
-reviewing the rebuilt binary.
-
-PowerShell hash example:
-
-```powershell
-Get-FileHash -Algorithm SHA256 .\Build\E-Day-32x9.exe
-```
-
-## Optional runtime review
-
-Building does not require owning or launching the game. No compiled game binaries or assets are included. To review functionality,
-use a separate offline Steam full-game session. The tested executable version is
-`+++fenix2+fairlight-omega-release-CL-4894958`, tested visually at 5120 x 1440.
-Copy the rebuilt executable and the four batch/configuration files from this repository beside
-GoWEDay-Steam.exe in FairlightConcept\Binaries\Win64. Keep Steam running,
-double-click Launch-E-Day-32x9.bat, and enable Cinematic Ultrawide Support.
-Keep the launcher window open until game exit. Restore-E-Day-Cutscenes.bat
-restores runtime changes, and game exit discards process memory changes.
-
-For a different build, Yes permits an experimental attempt; No or Enter skips
-the helper. Signature, memory-value, object, and protected-session checks remain
-enabled. A build with a different memory layout still fails without changes.
-Future build support and anti-cheat approval are not claimed.
+Matching source and fixtures are included in the separate Source archive.
+This repository contains the complete source for this revision.

@@ -9,7 +9,7 @@ if not exist "%EDAY_REVIEW_COMPILER%" (
 )
 if not exist "%~dp0Build" mkdir "%~dp0Build"
 if not exist "%~dp0Build" goto finish
-"%EDAY_REVIEW_COMPILER%" /nologo /target:exe /platform:x64 /out:"%~dp0Build\E-Day-32x9.exe" "%~dp0E-Day-32x9.cs" "%~dp0E-Day-CameraFraming.cs" "%~dp0E-Day-CameraSources.cs"
+"%EDAY_REVIEW_COMPILER%" /nologo /target:exe /platform:x64 /out:"%~dp0Build\E-Day-32x9.exe" "%~dp0E-Day-32x9.cs" "%~dp0E-Day-CameraFraming.cs" "%~dp0E-Day-CameraFrameGate.cs"
 set "EDAY_REVIEW_RESULT=%ERRORLEVEL%"
 if "%EDAY_REVIEW_RESULT%"=="0" echo Build succeeded: "%~dp0Build\E-Day-32x9.exe"
 :finish
