@@ -1,13 +1,14 @@
-# Nexus review: both gameplay FOV versions
+# Nexus review: cinematic and gameplay FOV versions
 
-The two FOV variants have separate source folders and executables. This page
+The three variants have separate source locations and executables. This page
 identifies the versions provided for review; publication here does not establish
-Nexus approval. The repository root remains the original cutscene-only source.
+Nexus approval. The repository root contains the lens-aware cutscene-only source.
 
 ## Complete source and build instructions
 
 | Version | Full source folder | Build instructions | Output |
 | --- | --- | --- | --- |
+| 32:9 cutscenes only | [Repository root](./) | [Build instructions](README.md#build-using-the-supplied-script) | `Build/E-Day-32x9.exe` |
 | 32:9 cutscenes + gameplay FOV | [Gameplay-FOV](Gameplay-FOV/) | [Build instructions](Gameplay-FOV/BUILD-INSTRUCTIONS.md) | `Build/E-Day-32x9-FOV.exe` |
 | Gameplay FOV only | [Gameplay-FOV-Only](Gameplay-FOV-Only/) | [Build instructions](Gameplay-FOV-Only/BUILD-INSTRUCTIONS.md) | `Build/E-Day-Gameplay-FOV.exe` |
 
@@ -24,7 +25,8 @@ SHA-256 of each packaged executable:
 
 | Version | Executable | SHA-256 |
 | --- | --- | --- |
-| Combined 32:9 cutscenes + gameplay FOV | `E-Day-32x9-FOV.exe` | `8e1380db2ef1634065acb55f3106ed97d26eb3761290e6913301d14521c4546d` |
+| 32:9 cutscenes only | `E-Day-32x9.exe` | `68fe5cc3aa584507210f6681f0f30b479298fe6f0588a363057d79ff144030ea` |
+| Combined 32:9 cutscenes + gameplay FOV | `E-Day-32x9-FOV.exe` | `a4489f779432c814b77098a42950552e40abf70bb58d75450a4e473813df1f0a` |
 | Gameplay FOV only | `E-Day-Gameplay-FOV.exe` | `00c5bf5d7659dfabce6b55a3ef79aaebacf5fab911977469f83c518624c73e1b` |
 
 Each source folder includes `DISTRIBUTED-BINARY-SHA256.txt` and `SHA256SUMS.txt`.
@@ -33,8 +35,13 @@ build can have different PE timestamps/module metadata and is not guaranteed
 to match the distributed binary byte for byte. The build commands and source
 are provided for managed-code review.
 
-## Changes from the original cutscene-only helper
+## Lens-aware update and version behavior
 
+- The root and combined cinematic versions reduce extra widening on wide
+  lens angles while preserving the full multiplier on tighter lenses. They
+  read filmback/focal fields, validate an additional native signature, and
+  adjust only the existing overscan data. Both keep the 3.50 preset and
+  loaded sequence template preparation. Gameplay-only is unchanged.
 - Combined version: retains the 3.50 cinematic preset and camera-template
   preparation, adds the validated gameplay settings multiplier, default 120,
   and reads `E-Day-gameplay-fov.txt` separately from cinematic framing.
@@ -50,10 +57,15 @@ are provided for managed-code review.
 
 ## Validation and scope
 
-See [combined validation](Gameplay-FOV/VALIDATION.txt) and
+See [cinematic validation](VALIDATION.txt), [combined validation](Gameplay-FOV/VALIDATION.txt) and
 [gameplay-only validation](Gameplay-FOV-Only/VALIDATION.txt).
-The combined version passed 16 synthetic fixtures and 13 launcher/helper checks;
-its gameplay adjustment was tested visually at 120 on Steam full-game CL 4894958
+The new lens calculation passed 11 checks. The combined gameplay memory
+fixtures passed all 16 checks again. The supplied builds succeeded and the
+user confirmed the tested wide shot and subsequent camera changes looked good.
+The prior combined version also passed 13 launcher/helper checks; the launcher
+has not changed in this revision.
+The combined gameplay adjustment was previously tested visually at 120 on
+Steam full-game CL 4894958
 at 5120x1440. The separate gameplay-only version passed 21 synthetic fixtures,
 including unchanged cinematic memory sentinels and session isolation, and 13
 launcher/helper checks. It has not had a separate live visual test.

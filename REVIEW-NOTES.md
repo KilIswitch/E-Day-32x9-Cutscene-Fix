@@ -4,6 +4,15 @@ Purpose: extend real-time cinematic rendering to 32:9 and adjust cinematic
 overscan. Default framing is 3.50. This is intended for offline Steam sessions.
 The sources correspond to the distribution binary identified in DISTRIBUTED-BINARY-SHA256.txt.
 
+## Lens-aware revision
+
+The cinematic helpers read animated focal length and filmback width to scale
+extra overscan on wide lenses. The existing overscan/flag write paths and
+restoration ownership checks are retained. No new game-memory write locations
+were added. A native focal-field read signature is now validated.
+DISTRIBUTED-BINARY-SHA256.txt identifies this revised root executable.
+See VALIDATION.txt for the current lens tests and visual feedback.
+
 ## Behavior relevant to review
 
 The helper accesses the running GoWEDay-Steam.exe process using OpenProcess,

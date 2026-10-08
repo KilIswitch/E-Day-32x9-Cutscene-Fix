@@ -2,13 +2,13 @@
 
 ## Versions
 
-- The repository root contains the original cutscene-only helper and its build instructions.
+- The repository root contains the lens-aware cutscene-only helper and its build instructions.
 - [Gameplay-FOV](Gameplay-FOV/README.md) contains the full source for the cutscene fix plus customizable gameplay FOV, default 120. Build that version using [Gameplay-FOV/BUILD-INSTRUCTIONS.md](Gameplay-FOV/BUILD-INSTRUCTIONS.md).
 
 
 - [Gameplay-FOV-Only](Gameplay-FOV-Only/README.md) contains the separate gameplay-only version, default 120, which leaves cinematic framing unchanged. Build it using [Gameplay-FOV-Only/BUILD-INSTRUCTIONS.md](Gameplay-FOV-Only/BUILD-INSTRUCTIONS.md).
 
-For Nexus review of the two FOV versions, see [NEXUS-FOV-REVIEW.md](NEXUS-FOV-REVIEW.md). Each version has its own full source, build instructions, validation notes, and distributed executable hash.
+For Nexus review of all three versions, see [NEXUS-FOV-REVIEW.md](NEXUS-FOV-REVIEW.md). Each version has its own full source, build instructions, validation notes, and distributed executable hash.
 
 The gameplay-only version needs three runtime files: `E-Day-Gameplay-FOV.exe`,
 `Launch-E-Day-Gameplay-FOV.bat`, and `E-Day-gameplay-fov.txt`.
@@ -23,6 +23,38 @@ are excluded from this source repository; the build scripts produce them locally
 This repository contains the full source for the E-Day 32:9 helper and the readable
 batch launch/apply/restore scripts. No repository, package manager, game files,
 or external libraries are needed to compile the application.
+
+## Lens-aware cinematic update
+
+The root cutscene-only version and the combined Gameplay-FOV version now reduce
+extra expansion on already-wide cinematic lenses. Normal and tighter lens angles
+retain the configured framing multiplier. This helps shots that looked distorted
+under a fixed multiplier without reducing the framing of tight shots.
+
+The reference lens is 35 mm on the game's 24.892 mm sensor width. Equivalent
+angles on different filmbacks use the same rule. The base aspect correction is
+always retained. The helper reads the animated focal length and sensor width;
+only overscan is adjusted. Authored focal length and filmback remain unchanged.
+An additional native focal-field signature is checked before applying the fix.
+
+Keep your existing framing text file during an update. The supplied preset
+remains 3.50. The visual test used the user's custom 3.00 setting on a 21 mm shot.
+The user confirmed the result and later camera changes looked good. 40, 75,
+and 100 mm shots retained full configured framing. Gameplay-FOV-Only is unchanged.
+See [validation](VALIDATION.txt) and [combined validation](Gameplay-FOV/VALIDATION.txt).
+The full campaign and every first camera frame have not been independently checked.
+
+Both cinematic versions include LensAdaptiveTests.cs for 11 calculation checks.
+It is excluded from the normal helper build. To run it from the repository root:
+
+```bat
+"%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:exe /platform:x64 /main:LensAdaptiveTests /out:"Build\LensAdaptiveTests.exe" "LensAdaptiveTests.cs" "E-Day-32x9.cs" "E-Day-CameraFraming.cs" "E-Day-CameraSources.cs"
+"Build\LensAdaptiveTests.exe"
+```
+
+Run Build.bat first to create the Build directory. For the combined test, run
+from Gameplay-FOV and add E-Day-GameplayFov.cs to the compiler source arguments.
+The gameplay configuration/memory fixtures remain separately documented there.
 
 ## Prerequisites
 

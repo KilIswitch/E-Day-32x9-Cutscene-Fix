@@ -50,6 +50,7 @@ internal static class CameraFraming
             !Read(h,basis+0x162360f,7).SequenceEqual(new byte[]{0x48,0x8b,0x05,0x6a,0x6a,0x74,0x0d}) ||
             !Read(h,basis+0x17114c3,7).SequenceEqual(new byte[]{0x48,0x8b,0x05,0x4e,0xc9,0x63,0x0d}) ||
             !Read(h,basis+0x8d6f3fc,7).SequenceEqual(new byte[]{0x44,0x89,0xaf,0x04,0x3a,0x00,0x00}) ||
+            !Read(h,basis+0x5518d58,8).SequenceEqual(new byte[]{0xc5,0xfa,0x10,0xa9,0x3c,0x0d,0x00,0x00}) ||
             !Read(h,basis+0x5518dc6,13).SequenceEqual(new byte[]{0xc5,0xf8,0x28,0xd3,0xc4,0xe2,0x61,0x99,0x91,0xbc,0x02,0x00,0x00}) ||
             !Read(h,basis+0x551887a,28).SequenceEqual(new byte[]{0xc5,0xfa,0x10,0x91,0x38,0x0d,0x00,0x00,0xc5,0xf8,0x2f,0xd1,0xc5,0xfa,0x10,0x81,0xcc,0x0c,0x00,0x00,0xc5,0xfa,0x59,0x99,0xa4,0x0c,0x00,0x00}))
             throw new CinematicFix.NotReadyException("Camera framing signatures differ. No changes made.");
@@ -218,7 +219,7 @@ internal static class CameraFraming
                         if (index<0 || !visited.Add(index+":"+serial)) continue;
                         byte[] item=objects.Item(index); if (item==null || BitConverter.ToInt32(item,16)!=serial || (BitConverter.ToUInt32(item,8)&0x10200000)!=0) continue;
                         long addr=BitConverter.ToInt64(item,0); if (addr==0) continue;
-                        byte[] body=Read(h,addr,0x2d2);
+                        byte[] body=Read(h,addr,0xd40);
                         if (BitConverter.ToInt64(body,0)!=basis+CineVtableRva || BitConverter.ToInt32(body,12)!=index || (BitConverter.ToUInt32(body,8)&0x30)!=0) continue;
                         float viewport; long outer=BitConverter.ToInt64(body,32);
                         if (!targetsByActor.TryGetValue(outer,out viewport)) continue;
@@ -247,7 +248,8 @@ internal static class CameraFraming
                             if (!Same(current,saved.Applied)) saved.Original=current;
                             saved.Aspect=aspect;
                         }
-                        float desired=(1+saved.Original)*Math.Max(1,viewport/saved.Aspect)*extra-1;
+                        float lensExtra=LensExtra(extra,BitConverter.ToSingle(body,0xca4),BitConverter.ToSingle(body,0xd3c));
+                        float desired=(1+saved.Original)*Math.Max(1,viewport/saved.Aspect)*lensExtra-1;
                         if (!(desired>=0 && desired<=64)) continue;
                         if (!objects.Valid(saved,true)) continue;
                         if (!Same(current,desired)) Write(h,addr+0x2bc,BitConverter.GetBytes(desired));
@@ -284,6 +286,16 @@ internal static class CameraFraming
                 }
             }
         }
+    }
+    // Keep the existing setting for normal/tight lenses. On wider lenses,
+    // limit the added expansion to a 35 mm lens on this game's 24.892 mm sensor.
+    // This adjusts overscan only; authored focal length and filmback stay intact.
+    internal static float LensExtra(float extra,float sensorWidth,float focalLength)
+    {
+        if (!(sensorWidth>0 && sensorWidth<=200 && focalLength>0 && focalLength<=1000)) return extra;
+        double referenceRatio=24.892/35.0;
+        double lensRatio=(double)sensorWidth/focalLength;
+        return (float)Math.Max(1,Math.Min(extra,extra*referenceRatio/lensRatio));
     }
     internal static bool Same(float a,float b) { return Math.Abs(a-b)<0.00001f; }
     static void RestoreCamera(IntPtr h,Objects objects,Camera camera)
