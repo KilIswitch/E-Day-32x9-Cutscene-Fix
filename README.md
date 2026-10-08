@@ -1,5 +1,17 @@
 # E-Day 32:9 cinematic fix - source and build instructions
 
+## Versions
+
+- The repository root contains the original cutscene-only helper and its build instructions.
+- [Gameplay-FOV](Gameplay-FOV/README.md) contains the full source for the cutscene fix plus customizable gameplay FOV, default 120. Build that version using [Gameplay-FOV/BUILD-INSTRUCTIONS.md](Gameplay-FOV/BUILD-INSTRUCTIONS.md).
+
+The gameplay FOV version needs only four runtime files beside GoWEDay-Steam.exe:
+`E-Day-32x9-FOV.exe`, `Launch-E-Day-32x9-FOV.bat`,
+`E-Day-gameplay-fov.txt`, and `E-Day-32x9-framing.txt`.
+Its Apply and Restore batch files are optional shortcuts. Compiled executables
+are excluded from this source repository; the build scripts produce them locally.
+
+
 This repository contains the full source for the E-Day 32:9 helper and the readable
 batch launch/apply/restore scripts. No repository, package manager, game files,
 or external libraries are needed to compile the application.
