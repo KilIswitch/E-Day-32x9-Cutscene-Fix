@@ -1,0 +1,53 @@
+Gameplay FOV variant validation - 2026-10-07
+
+Tested game: Steam full version, CL 4894958, 5120x1440.
+The original cutscene-only helper was restored and stopped before applying
+this separate variant. Existing original-version files were preserved.
+
+Read-only tracing found the gameplay camera's native settings setter:
+clamp FOV to 60..90, divide by DefaultFOV (+0x340), store multiplier (+0x5ea8).
+The gameplay camera bridge reads this multiplier independently of cinematic
+lens settings. New signatures validate this setter and getter before changes.
+No game code or executable files were patched.
+
+Live baseline: DefaultFOV 80, gameplay settings multiplier 1.125 = input 90.
+Live application: multiplier 1.5 = input 120. User confirmed it worked and
+widened gameplay. At the user's request, setting 0 restored multiplier 1.125
+for an aiming comparison; the cutscene helper remained active. The user
+confirmed a difference and requested continuation. Setting 120 was reapplied,
+verified as multiplier 1.5. Final cinematic width and helper checks passed.
+
+Sixteen synthetic process-memory/configuration fixtures passed:
+- 120 default, decimal customization, and 0 disable accepted.
+- NaN/Infinity, out-of-range values, blank/ambiguous locale text rejected.
+- 120 and live 130 changes applied through the gameplay settings multiplier.
+- Final-view cache sentinel untouched.
+- Invalid live edits retain the last valid setting.
+- A valid cinematic target restores gameplay baseline even without a fill flag.
+- Gameplay override resumes after the cinematic target ends.
+- 0 restores gameplay while leaving the surrounding cinematic helper intact.
+- Undo preserves a later in-game setting change.
+- Recycled object serials block writes to stale objects.
+- Invalid gameplay target identities prevent writes.
+All memory for these fixtures was allocated by the fixture process itself.
+
+All thirteen adapted launcher/helper fixtures passed:
+- Absent ID created and cleaned up; existing correct ID preserved.
+- Different ID refused and preserved.
+- Game error propagated; helper failure still waits for game exit.
+- Declining a different build skips the helper while the game continues.
+- Missing executable/helper refused; Steam required; running game guarded.
+- Parent environment unchanged.
+- Unrecognized dummy executable declined without changes.
+- Choosing Yes still refuses an incompatible layout immediately.
+
+Both direct compilation and the supplied double-click Build.bat succeeded.
+The user's game was not restarted for launcher testing.
+
+Limits: the final rendered projection angle was not measured independently;
+120 is the game's gameplay FOV input, and dynamic cameras/aiming may adjust it.
+All weapons, camera modes, campaign scenes, resolutions, and future builds have
+not been checked. The new cinematic exclusion was tested with a synthetic
+cinematic target; a fresh visual cutscene comparison was not performed this turn.
+These results were recorded before the GitHub source upload. They do not
+constitute Nexus approval.
