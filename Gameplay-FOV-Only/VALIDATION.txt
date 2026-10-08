@@ -1,0 +1,31 @@
+Gameplay-only variant - 2026-10-07
+
+Production build and supplied Build.bat succeeded with the Windows .NET
+Framework x64 compiler. The source contains only two gameplay multiplier write
+paths, for application and restoration, both at manager +0x5ea8. No cinematic
+width, overscan, crop, lens, template, or final-view-cache write path is included.
+
+21 synthetic memory/configuration/session fixtures passed:
+- Configuration: default 120, decimals, 0 disable, invalid/nonfinite/out-of-range.
+- Gameplay multiplier application, live editing, and invalid edit preservation.
+- Cinematic target exclusion and gameplay resumption afterward.
+- Restoration on disable and preservation of later game setting changes.
+- Recycled object serial and invalid target write guards.
+- Existing combined helper blocks simultaneous start.
+- Gameplay-only restore does not signal the combined helper to stop.
+- Final view cache, cinematic width limit, cinematic overscan/crop flags,
+  and cinematic fill setting remain unchanged.
+
+13 launcher/helper fixtures passed:
+- Absent Steam ID created/removed; existing correct ID preserved.
+- Different ID rejected and preserved.
+- Waits for game exit, including when the helper fails or is declined.
+- Exit code propagation, missing files, Steam requirement, running-game guard.
+- Launch-local environment changes leave parent settings intact.
+- Dummy incompatible game rejected when declined or after choosing Yes.
+
+The gameplay-only helper uses the same gameplay multiplier module previously
+tested visually with the combined version at 120 on CL 4894958, 5120x1440.
+This separate version has not been visually tested in a live game. The game was
+closed during packaging. No user's running game was modified in this task.
+No online safety, anti-cheat approval, or future-build compatibility is claimed.
