@@ -28,8 +28,6 @@ internal static class CameraFraming
             return WaitHandle.WaitAny(new WaitHandle[]{stop,this})==1;
         }
     }
-    const long ObjectManagerRva = 0xe830dc0, ClassRva = 0xeba4dc0, CineVtableRva = 0xd365980;
-    const ulong ObjectManagerKey = 0x5f85652ab88d6999;
     [DllImport("kernel32", SetLastError=true)] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
     [DllImport("kernel32")] static extern bool CloseHandle(IntPtr h);
     [DllImport("kernel32", SetLastError=true)] static extern bool WriteProcessMemory(IntPtr h, IntPtr address, byte[] data, UIntPtr size, out UIntPtr count);
@@ -45,15 +43,8 @@ internal static class CameraFraming
     }
     public static void ValidateMarkers(IntPtr h, long basis)
     {
-        if (!Read(h,basis+0x1601beb,7).SequenceEqual(new byte[]{0x48,0x8b,0x05,0xce,0x31,0x5a,0x0d}) ||
-            !Read(h,basis+0x3cd33ad,17).SequenceEqual(new byte[]{0x4c,0x8b,0x15,0x0c,0xda,0xb5,0x0a,0x48,0xbe,0x99,0x69,0x8d,0xb8,0x2a,0x65,0x85,0x5f}) ||
-            !Read(h,basis+0x162360f,7).SequenceEqual(new byte[]{0x48,0x8b,0x05,0x6a,0x6a,0x74,0x0d}) ||
-            !Read(h,basis+0x17114c3,7).SequenceEqual(new byte[]{0x48,0x8b,0x05,0x4e,0xc9,0x63,0x0d}) ||
-            !Read(h,basis+0x8d6f3fc,7).SequenceEqual(new byte[]{0x44,0x89,0xaf,0x04,0x3a,0x00,0x00}) ||
-            !Read(h,basis+0x5518d58,8).SequenceEqual(new byte[]{0xc5,0xfa,0x10,0xa9,0x3c,0x0d,0x00,0x00}) ||
-            !Read(h,basis+0x5518dc6,13).SequenceEqual(new byte[]{0xc5,0xf8,0x28,0xd3,0xc4,0xe2,0x61,0x99,0x91,0xbc,0x02,0x00,0x00}) ||
-            !Read(h,basis+0x551887a,28).SequenceEqual(new byte[]{0xc5,0xfa,0x10,0x91,0x38,0x0d,0x00,0x00,0xc5,0xf8,0x2f,0xd1,0xc5,0xfa,0x10,0x81,0xcc,0x0c,0x00,0x00,0xc5,0xfa,0x59,0x99,0xa4,0x0c,0x00,0x00}))
-            throw new CinematicFix.NotReadyException("Camera framing signatures differ. No changes made.");
+        if(GameLayout.Required.ObjectGlobal<=0 || GameLayout.Required.ManagerClass<=0)
+            throw new InvalidOperationException("Camera layout is not initialized.");
     }
     static string Name(Process game, string kind) { return "Local\\EDay32x9_"+game.Id+"_"+game.StartTime.ToUniversalTime().Ticks+"_"+kind; }
     public static bool Running(Process game)
@@ -70,7 +61,7 @@ internal static class CameraFraming
             info.UseShellExecute=true; info.WindowStyle=ProcessWindowStyle.Hidden; info.WorkingDirectory=AppDomain.CurrentDomain.BaseDirectory;
             using (Process child=Process.Start(info))
             {
-                if (!ready.WaitOne(10000) || child.HasExited) throw new InvalidOperationException("Could not start the cinematic framing helper.");
+                if (!ready.WaitOne(30000) || child.HasExited) throw new InvalidOperationException("Could not start the cinematic framing helper.");
             }
         }
         Console.WriteLine("Cinematic framing correction is running in the background until game exit.");
@@ -96,7 +87,7 @@ internal static class CameraFraming
         public IntPtr H; public long Chunks; public int Count;
         public Objects(IntPtr h,long basis)
         {
-            H=h; long manager=unchecked((long)((ulong)Q(h,basis+ObjectManagerRva)^ObjectManagerKey));
+            H=h; long manager=unchecked((long)((ulong)Q(h,basis+GameLayout.Required.ObjectGlobal)^GameLayout.Required.ObjectKey));
             byte[] header=Read(h,manager,40); Chunks=BitConverter.ToInt64(header,16); Count=BitConverter.ToInt32(header,36);
             if (Count<0 || Count>4000000 || Chunks<0x10000) throw new InvalidOperationException("Invalid game object array.");
         }
@@ -168,11 +159,11 @@ internal static class CameraFraming
                             managers.RemoveAll(value=>!objects.Valid(value,true));
                             if(managers.Count==0 && (!searched || search.ElapsedMilliseconds>=3000))
                             {
-                                long cls=Q(h,basis+0xed6a080);
+                                long cls=Q(h,basis+GameLayout.Required.ManagerClass);
                                 if(cls!=0) managers=objects.FindNative(cls,true);
                                 searched=true; search.Restart(); configured=false;
                             }
-                            if(!Read(h,basis+0xe2189dc,4).SequenceEqual(new byte[]{0x39,0x8e,0x63,0x40})) break;
+                            if(!Read(h,basis+GameLayout.Required.Limit,4).SequenceEqual(new byte[]{0x39,0x8e,0x63,0x40})) break;
                             if(!configured || config.ElapsedMilliseconds>=250)
                             {
                                 extra=ReadExtraView(); gate.Update(objects,managers,extra);

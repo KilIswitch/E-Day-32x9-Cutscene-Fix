@@ -21,33 +21,34 @@ internal static class CameraFrameGateTests
  static float F(long a) { var b=new byte[4]; Marshal.Copy(new IntPtr(a),b,0,4); return BitConverter.ToSingle(b,0); }
  static void Bytes(long a,byte[] b) { Marshal.Copy(b,0,new IntPtr(a),b.Length); }
  static byte[] Hex(string value) { return Enumerable.Range(0,value.Length/2).Select(i=>Convert.ToByte(value.Substring(i*2,2),16)).ToArray(); }
- public static int Main()
+ public static int Main(string[] args)
  {
+  FixtureLayout.Use(args);
   IntPtr reserve=VirtualAlloc(IntPtr.Zero,(UIntPtr)0xf000000,0x2000,4); if(reserve==IntPtr.Zero) throw new Exception("reserve");
   long basis=reserve.ToInt64(); IntPtr h=OpenProcess(0xc38,false,Process.GetCurrentProcess().Id); var allocations=new List<IntPtr>(); CameraFrameGate gate=null;
   Func<int,long> allocate=delegate(int n) { var p=Marshal.AllocHGlobal(n); allocations.Add(p); Bytes(p.ToInt64(),new byte[n]); return p.ToInt64(); };
   try
   {
-   foreach(long rva in new long[]{0xe830dc0,0xd365980+0x6c8,0x551829c})
+   foreach(long rva in new long[]{GameLayout.Required.ObjectGlobal,GameLayout.Required.CineVtable+0x6c8,GameLayout.Required.View})
     if(VirtualAlloc(new IntPtr((basis+rva)&~4095L),(UIntPtr)4096,0x1000,4)==IntPtr.Zero) throw new Exception("commit");
-   long original=basis+0x551829c,slot=basis+0xd365980+0x6c8;
+   long original=basis+GameLayout.Required.View,slot=basis+GameLayout.Required.CineVtable+0x6c8;
    byte[] fake=Hex("48895c2408574883ec30c5f829742420c5f828f1498bf8488bd9f30f1083bc020000f30f1107f30f1177040fb783d0020000894708488b5c2440c5f8287424204883c4305fb8f0debc9ac3"); Bytes(original,fake); uint old;
    if(!VirtualProtect(new IntPtr(original&~4095L),(UIntPtr)4096,0x20,out old)) throw new Exception("protect fake view");
    Q(slot,original);
    long manager=allocate(0x6200),actor=allocate(0xd00),cam=allocate(0xd40),replacement=allocate(0xd40),outView=allocate(16);
    long header=allocate(40),chunks=allocate(8),items=allocate(24*4);
-   Q(basis+0xe830dc0,unchecked((long)((ulong)header^0x5f85652ab88d6999))); Q(header+16,chunks); I(header+36,4); Q(chunks,items);
-   Q(manager,basis+0xd8a6b30); I(manager+12,0); Q(actor,basis+0xd365158); I(actor+12,2);
+   Q(basis+GameLayout.Required.ObjectGlobal,unchecked((long)((ulong)header^0x5f85652ab88d6999))); Q(header+16,chunks); I(header+36,4); Q(chunks,items);
+   Q(manager,basis+GameLayout.Required.ManagerVtable); I(manager+12,0); Q(actor,basis+GameLayout.Required.ActorVtable); I(actor+12,2);
    long level=allocate(40); Q(level,basis+0xd384f18); Q(actor+32,level);
    Action<long,int,int> setup=delegate(long address,int index,int serial)
    {
-    Q(address,basis+0xd365980); I(address+12,index); Q(address+32,actor);
+    Q(address,basis+GameLayout.Required.CineVtable); I(address+12,index); Q(address+32,actor);
     F(address+0x2b4,16f/9f); F(address+0xca4,24.892f); F(address+0xca8,24.892f/(16f/9f)); F(address+0xccc,1);
     F(address+0xd3c,21); F(address+0xcb8,5); F(address+0xcbc,500); Marshal.WriteInt16(new IntPtr(address+0x2d0),0x101);
     Q(items+index*24,address); I(items+index*24+16,serial);
    };
    Q(items,manager); I(items+16,101); Q(items+2*24,actor); I(items+2*24+16,103);
-   setup(cam,1,102); setup(replacement,3,104); F(manager+0x3a04,32f/9f);
+   setup(cam,1,102); setup(replacement,3,104); F(manager+GameLayout.Required.FillField,32f/9f);
    var managers=new List<CameraFraming.Ref>{new CameraFraming.Ref{Address=manager,Index=0,Serial=101}};
    gate=new CameraFrameGate(h,basis); gate.Update(new CameraFraming.Objects(h,basis),managers,3.5f);
    Assert(Q(slot)!=original,"validated vtable data pointer installed");
@@ -62,14 +63,14 @@ internal static class CameraFrameGateTests
    F(cam+0xd38,0); F(cam+0x2b4,16f/9f); F(cam+0xca8,24.892f/(7f/3f)); frame(cam); Equal(F(outView),13f/3f,"uncropped filmback recomputed before cache refresh");
    F(cam+0xca8,24.892f/(16f/9f)); F(cam+0xd3c,21); F(cam+0x2bc,0.1f); frame(cam); Equal(F(outView),3.62f,"new authored overscan preserved");
    frame(cam); Equal(F(outView),3.62f,"own applied overscan does not compound");
-   Q(level,basis+0xd06d118); F(cam+0x2bc,0);
+   Q(level,basis+GameLayout.Required.MovieVtable); F(cam+0x2bc,0);
    frame(cam); Equal(F(outView),0,"serialized MovieScene template left authored");
    Assert(Marshal.ReadInt16(new IntPtr(cam+0x2d0))==0,"template flags not rewritten");
    Q(level,basis+0xd384f18); F(cam+0x2bc,3.62f);
-   F(manager+0x3a04,0); frame(cam); Equal(F(outView),0.1f,"off mode restores original before view calculation");
+   F(manager+GameLayout.Required.FillField,0); frame(cam); Equal(F(outView),0.1f,"off mode restores original before view calculation");
    Assert(Marshal.ReadInt32(new IntPtr(outView+8))==0x101,"off mode restores authored flags");
-   F(manager+0x3a04,32f/9f); frame(cam); Equal(F(outView),3.62f,"on mode resumes from original baseline");
-   Q(actor,basis+0xd365158+8); frame(cam); Equal(F(outView),0.1f,"non-cinematic actor left unadjusted"); Q(actor,basis+0xd365158);
+   F(manager+GameLayout.Required.FillField,32f/9f); frame(cam); Equal(F(outView),3.62f,"on mode resumes from original baseline");
+   Q(actor,basis+GameLayout.Required.ActorVtable+8); frame(cam); Equal(F(outView),0.1f,"non-cinematic actor left unadjusted"); Q(actor,basis+GameLayout.Required.ActorVtable);
    I(items+16,999); frame(cam); Equal(F(outView),0.1f,"stale manager serial blocks adjustment"); I(items+16,101);
    F(cam+0x2bc,float.NaN); frame(cam); Assert(float.IsNaN(F(outView)),"invalid authored overscan left untouched"); F(cam+0x2bc,0.1f);
    F(cam+0xd3c,10); F(cam+0xcb8,21); frame(cam); Equal(F(outView),3.62f,"original focal-length clamp matched"); F(cam+0xcb8,5);

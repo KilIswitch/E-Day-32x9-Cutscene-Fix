@@ -1,28 +1,37 @@
-# Synchronous camera correction review notes
+# CL-4909945 code and memory review
 
-Production cinematic code: E-Day-32x9.cs (launch checks, cap, entry point),
-E-Day-CameraFraming.cs (session guard, identities, configuration, lifecycle),
-E-Day-CameraFrameGate.cs (validated virtual dispatch pointer, owned allocation,
-embedded wrapper and restoration). camera-frame-gate.asm and its disassembly
-document all native wrapper bytes and the two pointer relocations. The combined
-folder additionally includes E-Day-GameplayFov.cs; gameplay-only is unchanged.
+All variants include E-Day-GameLayout.cs. It opens no additional process handle;
+it reads the validated target through the caller's existing handle, captures
+readable image regions and resolves/validates native classes, object-array
+decoding, code signatures, field bounds, relative calls and metadata. It does
+not write game data. A complete candidate is published only after validation.
+The entry point checks the required original view dispatch before any cap write.
 
-This replaces periodic camera/template adjustment with correction before each
-compatible GetCameraView call. One eight-byte vtable data pointer is temporarily
-changed in memory. The wrapper lives in separately allocated memory, becomes
-read/execute after writing, adjusts overscan/flags, and tail-calls the original
-method with its arguments and return path intact. Installation/restoration
-briefly parks the game around the dispatch pointer write. The game's executable
-instructions and disk game files are not patched. This does inject the helper's
-own executable code into the running process, rather than only changing data.
+Cinematic production: E-Day-32x9.cs, E-Day-CameraFraming.cs,
+E-Day-CameraFrameGate.cs and E-Day-GameLayout.cs. The combined folder adds
+E-Day-GameplayFov.cs. Gameplay-only uses E-Day-Gameplay-FOV.cs,
+E-Day-GameplayRuntime.cs, E-Day-GameplayFov.cs and E-Day-GameLayout.cs.
 
-Serialized MovieScene camera templates are excluded. Native object identities,
-manager/camera vtables, signatures, numeric bounds and restoration ownership are
-checked. Owned allocations remain disabled until game exit after restoration to
-avoid freeing code while a thread could still be leaving it. No network calls,
-remote payloads, dependency downloads, packing or obfuscation are included.
+Cinematic mode changes the existing four-byte cinematic limit and temporarily
+replaces one eight-byte vtable data pointer. Its separately allocated executable
+wrapper adjusts overscan/two camera flags before tail-calling the original view
+function. Readable assembly/disassembly accompany the embedded wrapper. Its two
+pointer relocations plus cinematic fill-field displacement are checked before
+use. The game instruction bytes and executable disk file are not patched.
+This does allocate/inject the helper's own executable code into the process;
+it is not a data-only change. Dispatch replacement briefly parks/resumes the
+process. Disabled owned allocations remain until game exit to protect code
+lifetime. Restore verifies identities/ownership and restores original dispatch.
 
-The launch-local Steam/EOS settings and existing protected-session checks remain.
-Build/test scripts require no game and tests modify only their own process.
-The whole campaign and future layouts remain unverified. See VALIDATION.txt,
-BUILD-INSTRUCTIONS.md and NEXUS-FOV-REVIEW.md for evidence and binary identities.
+Gameplay FOV changes the validated settings multiplier, preserving original
+values and checking target type/object identity. It restores its owned input
+when disabled, on cinematic targets, and on helper restoration. It does not
+patch final-view caches or cinematic focal lengths.
+
+Launch scripts retain local Steam/EOS environment handling, Steam process/ID
+checks, direct launch, exit waiting and owned-ID cleanup. Protected-session
+checks remain. There are no network calls, downloaded payloads, packing,
+obfuscation, service installs or permanent environment changes.
+
+All three sources and tests are included. See NEXUS-FOV-REVIEW.md for build
+instructions, binary hashes, test counts and explicit validation limits.

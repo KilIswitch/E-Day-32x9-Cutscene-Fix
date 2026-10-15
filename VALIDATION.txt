@@ -1,17 +1,110 @@
-Synchronous cinematic correction, October 8 2026
+Local fixture run, CL-4909945 release.
 
-31 owned-memory frame-wrapper fixtures: first-view timing and arguments,
-wide/normal/tight lenses, stable crop/sensor calculation, no compounding,
-asset-template exclusion, off/on restoration, stale identities, invalid data,
-focal clamp, live framing input, slot reuse, dispatch restoration and idempotence.
-11 lens-policy fixtures. Combined variant additionally has 16 gameplay fixtures.
+PASS validated vtable data pointer installed
+PASS original function return preserved
+PASS new 21 mm camera widened before its first original view calculation (3.2)
+PASS delta-time argument preserved (0.125)
+PASS overscan flags disabled for adjusted view
+PASS lens change corrected in same call (6)
+PASS tight 100 mm lens retains full framing (6)
+PASS final crop overrides transient cached aspect (4.333333)
+PASS completed crop update has identical framing (4.333333)
+PASS uncropped filmback recomputed before cache refresh (4.333333)
+PASS new authored overscan preserved (3.62)
+PASS own applied overscan does not compound (3.62)
+PASS serialized MovieScene template left authored (0)
+PASS template flags not rewritten
+PASS off mode restores original before view calculation (0.1)
+PASS off mode restores authored flags
+PASS on mode resumes from original baseline (3.62)
+PASS non-cinematic actor left unadjusted (0.1)
+PASS stale manager serial blocks adjustment (0.1)
+PASS invalid authored overscan left untouched
+PASS original focal-length clamp matched (3.62)
+PASS custom framing updates wrapper (5.6)
+PASS reused camera slot receives correct first-call framing (2.6)
+PASS wrapper entry counter returns to zero
+PASS applied view calls counted
+PASS ownership table did not overflow
+PASS undo restores replacement's original overscan (0)
+PASS undo skips stale camera identity (5.6)
+PASS undo restores replacement flags
+PASS undo restores original dispatch pointer
+PASS undo is idempotent
+31 frame-gate fixtures passed; only this test process was modified.
+PASS validated vtable data pointer installed
+PASS original function return preserved
+PASS new 21 mm camera widened before its first original view calculation (3.2)
+PASS delta-time argument preserved (0.125)
+PASS overscan flags disabled for adjusted view
+PASS lens change corrected in same call (6)
+PASS tight 100 mm lens retains full framing (6)
+PASS final crop overrides transient cached aspect (4.333333)
+PASS completed crop update has identical framing (4.333333)
+PASS uncropped filmback recomputed before cache refresh (4.333333)
+PASS new authored overscan preserved (3.62)
+PASS own applied overscan does not compound (3.62)
+PASS serialized MovieScene template left authored (0)
+PASS template flags not rewritten
+PASS off mode restores original before view calculation (0.1)
+PASS off mode restores authored flags
+PASS on mode resumes from original baseline (3.62)
+PASS non-cinematic actor left unadjusted (0.1)
+PASS stale manager serial blocks adjustment (0.1)
+PASS invalid authored overscan left untouched
+PASS original focal-length clamp matched (3.62)
+PASS custom framing updates wrapper (5.6)
+PASS reused camera slot receives correct first-call framing (2.6)
+PASS wrapper entry counter returns to zero
+PASS applied view calls counted
+PASS ownership table did not overflow
+PASS undo restores replacement's original overscan (0)
+PASS undo skips stale camera identity (5.6)
+PASS undo restores replacement flags
+PASS undo restores original dispatch pointer
+PASS undo is idempotent
+31 frame-gate fixtures passed; only this test process was modified.
+11 adaptive lens checks passed.
+PASS Yes accepts a compatibility attempt
+PASS short Yes accepted
+PASS case and whitespace accepted
+PASS No declines
+PASS short No accepted
+PASS empty answer defaults to No
+PASS unavailable input defaults to No
+PASS invalid answer asks again before declining
+PASS invalid answer asks again before accepting
+PASS relocated image resolves code, data and relative targets False/0
+PASS fields are decoded rather than guessed False/0
+PASS layout discovery and validation make no writes False/0
+PASS relocated image resolves code, data and relative targets False/196608
+PASS fields are decoded rather than guessed False/196608
+PASS layout discovery and validation make no writes False/196608
+PASS relocated image resolves code, data and relative targets True/0
+PASS fields are decoded rather than guessed True/0
+PASS layout discovery and validation make no writes True/0
+PASS relocated image resolves code, data and relative targets True/196608
+PASS fields are decoded rather than guessed True/196608
+PASS layout discovery and validation make no writes True/196608
+PASS ambiguous cinematic signature rejected
+PASS ambiguous cinematic signature rejected leaves all image data unchanged
+PASS missing view signature rejected
+PASS missing view signature rejected leaves all image data unchanged
+PASS out-of-bounds FOV field rejected
+PASS out-of-bounds FOV field rejected leaves all image data unchanged
+PASS changed slider clamp semantics rejected
+PASS changed slider clamp semantics rejected leaves all image data unchanged
+PASS setter/getter disagreement rejected
+PASS setter/getter disagreement rejected leaves all image data unchanged
+PASS changed camera flag layout rejected
+PASS changed camera flag layout rejected leaves all image data unchanged
+PASS native class size disagreement rejected
+PASS native class size disagreement rejected leaves all image data unchanged
+PASS ambiguous controller metadata rejected
+PASS ambiguous controller metadata rejected leaves all image data unchanged
+PASS conflicting object globals rejected
+PASS conflicting object globals rejected leaves all image data unchanged
+PASS 1000 masked pattern searches match the reference matcher
+31 layout checks passed; owned test memory only.
 
-Live prototype trace: eight cinematic cameras, 21/40/50/60/75 mm focal lengths,
-19,575 corrected view calls, zero table overflows, zero read failures, no recorded
-framing math mismatches. User tested the same cutscene and another with different
-lenses: "No flashes; framing looks right". The final source adds exclusion of
-serialized MovieScene camera assets; this guard has fixture coverage and leaves
-the tested runtime world cameras on the same correction path.
-
-Installed framing and gameplay config file hashes are preserved during update.
-Only tested compatible cinematic views are confirmed; full campaign unverified.
+Live combined helper: user confirmed cinematic framing/no flashes and gameplay FOV/aiming. Restore/check/reapply succeeded.
