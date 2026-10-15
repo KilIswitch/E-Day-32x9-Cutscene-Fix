@@ -1,90 +1,70 @@
-# E-Day gameplay FOV only
+# E-Day updated mod: Gameplay FOV only
 
-A separate offline Steam version that adjusts gameplay FOV, default **120**.
-Cutscenes use the game's own framing and Cinematic Ultrawide Support setting.
-This version contains no cinematic width-limit, overscan, crop, lens, or camera
-template adjustment. It suspends its gameplay override during cinematics.
+Steam build: +++fenix2+fairlight-gamma-release-CL-4909945
+Module size: 324030464. Release prepared October 15, 2026.
 
-## Install and launch
+## Installation and updating
 
-Copy these **three required files** beside `GoWEDay-Steam.exe` in
-`FairlightConcept\Binaries\Win64`:
+Close the game before replacing an existing helper. Keep your current text
+settings when updating. Copy these files beside GoWEDay-Steam.exe:
 
-- `E-Day-Gameplay-FOV.exe`
-- `Launch-E-Day-Gameplay-FOV.bat`
-- `E-Day-gameplay-fov.txt`
+- E-Day-Gameplay-FOV.exe
+- Launch-E-Day-Gameplay-FOV.bat
+- E-Day-gameplay-fov.txt
 
-Keep Steam running, double-click `Launch-E-Day-Gameplay-FOV.bat`, and keep the
-launcher window open until game exit. There is no cutscene framing text file.
-The existing Cinematic Ultrawide Support option can be on or off.
+Keep Steam running and double-click Launch-E-Day-Gameplay-FOV.bat. Leave its window open until the
+game exits. Apply-E-Day-Gameplay-FOV.bat and Restore-E-Day-Gameplay-FOV.bat are optional apply/undo shortcuts.
+Use only one of the three camera variants in a game session.
 
-The launcher requires Steam, starts the full-game executable directly from its
-own directory, and sets `EOS_USE_ANTICHEATCLIENTNULL=1` and `SteamAppId=3010850`
-only within that launch. It creates `steam_appid.txt` containing `3010850` only
-if absent, preserves an existing correct file, and refuses a different ID. It
-waits for game exit and removes only the ID file it created.
+E-Day-gameplay-fov.txt accepts 60 through 150, including decimals, or 0 to follow
+the game's original setting. Packaged default: 120. Your installed value is
+preserved when updating only the EXE. This adjusts the gameplay settings input;
+aiming, cover and special camera behavior continue through the engine's logic.
 
-## Switching from another version
+## Update resilience and limits
 
-Close the game before switching, or restore the currently active helper using
-that version's Restore shortcut. Helpers share a session guard and cannot run
-simultaneously. This version does not undo a different helper's cutscene changes.
-Closing the game discards all runtime memory changes.
+E-Day-GameLayout.cs searches the loaded executable for the camera code and native
+class registrations. It resolves relative references and the object-array key,
+reads class default vtables, and validates object identities and hierarchy data.
+It discovers the cinematic fill field and gameplay FOV/target-selector fields
+from their instructions, and controller ownership from native property metadata.
 
-The gameplay text file has the same name as the combined version's file. Keep
-your existing custom value if you want to preserve it instead of copying the
-included 120 preset.
+The complete required layout is validated before writes. Missing/ambiguous
+signatures, invalid call targets, changed slider semantics, invalid field bounds
+and incompatible native cinematic structures are rejected. There is no fallback
+to the previous build's addresses. A successful build-consent answer does not
+skip these checks. An untested build still asks Yes/No before attempting it.
 
-## Customize
+This handles compatible address relocations and the validated field changes in
+CL-4909945. It cannot guarantee compatibility with future code, class or camera
+structure changes. Such updates can still require a new mod revision. This
+release targets Steam; it does not establish compatibility with Game Pass.
 
-Put one number in `E-Day-gameplay-fov.txt`, initially `120`. Accepted values:
-`60` through `150`, including decimals. Use `0` to restore the game's own
-gameplay setting while leaving the helper available for later edits.
+The launcher retains its previous local-only environment and Steam-ID handling:
+SteamAppId=3010850, EOS_USE_ANTICHEATCLIENTNULL=1, direct GoWEDay-Steam.exe launch,
+preservation of existing steam_appid.txt, and cleanup only of its created file
+after game exit. No permanent environment settings or executable disk patches.
+The existing offline-session/anti-cheat checks remain enabled.
 
-Save changes while playing; the helper reads the text about every 250 ms.
-Invalid edits retain the last valid value. A missing file defaults to 120.
-Resume after pausing to let the camera refresh.
+## Undo
 
-This is the game's gameplay FOV input. The UI slider still stores its normal
-60-90 setting. The game's aiming, sprinting, and other dynamic camera logic can
-adjust the rendered view; aiming may also be wider with a higher input.
+Run Restore-E-Day-Gameplay-FOV.bat, or close the game to discard session changes. Normal Steam
+launches do not start the helper. After closing, removing the runtime mod files
+uninstalls it. Keep the text settings if you plan to install a newer release.
 
-## Restore and optional shortcuts
+## Validation and source
 
-Closing the game restores all changes by discarding process memory. For a
-gameplay comparison without closing it, set the text file to `0`.
+All included fixtures passed. Layout fixtures include address-relocated images,
+old/new manager fields, ambiguous/missing signatures, changed fields/constants,
+metadata conflicts and 1000 masked-search comparisons. Camera/gameplay fixtures
+execute only against their own test-process data using both member layouts.
 
-The source package includes two optional shortcuts. Copy them beside the helper
-if needed: `Apply-E-Day-Gameplay-FOV.bat` applies to an already running offline
-session; `Restore-E-Day-Gameplay-FOV.bat` stops this helper and restores its own
-gameplay multiplier. They are not needed for the usual double-click launch.
+The combined helper passed live testing on CL-4909945: the user confirmed 32:9
+framing with no zoom flashes at camera changes, and correct gameplay FOV/aiming.
+Undo and reapply were checked. The installed framing and FOV settings hashes
+were preserved. Other variants share the tested resolver/runtime components
+and passed their respective fixtures; they were not separately visually tested.
+Full campaign and every camera/resolution remain unverified.
 
-To uninstall, close the game and remove the three installed files and any
-optional shortcuts. Launch through Steam's normal Play button for an unmodded
-session.
-
-## Compatibility and validation
-
-Uses the validated gameplay settings multiplier from Steam full-game build
-`+++fenix2+fairlight-omega-release-CL-4894958`. Default 120 uses the same gameplay
-adjustment previously tested visually at 5120 x 1440 in the combined version.
-The separate version passed 21 synthetic memory/configuration/session fixtures
-and 13 launcher/helper checks; it has not had a separate live visual test.
-
-Other builds present a Yes/No choice. Yes permits a compatibility attempt;
-signature, object identity, original-value, and protected-session checks remain
-enabled. No skips the helper while the launched game can continue. Initialization
-waits without a time limit until ready or game exit. Updates may require new
-signatures or offsets. Every weapon, mode, resolution, and future build is not
-verified.
-
-Offline use only. No online safety or anti-cheat approval is claimed. The helper
-modifies only the validated gameplay manager's settings multiplier in process
-memory, restores its own values when safe, and does not modify game files,
-executable instructions, or permanent environment settings. It performs no
-network communication or downloads.
-
-## Source
-
-The separate source package includes all three C# files, readable batch files,
-build instructions, fixture tests, and checksums. See `BUILD-INSTRUCTIONS.md`.
+This folder contains the complete source, build instructions and fixtures for
+this variant. Compiled executables are excluded from this source repository.

@@ -1,51 +1,26 @@
-# Build the gameplay-only helper
+# Build: Gameplay FOV only
 
-Use 64-bit Windows with the .NET Framework 4.x C# compiler at
-`%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe`.
-No game files, package manager, downloaded libraries, or administrator privileges
-are needed for compilation.
+1. Download/clone this repository or extract the matching Source ZIP to a writable directory on 64-bit Windows.
+2. With .NET Framework 4.x installed, double-click Build.bat (or run
+   `Build.bat --no-pause`).
+3. The result is `Build/E-Day-Gameplay-FOV.exe`. Copy it with the launcher and settings files
+   described in README.md beside GoWEDay-Steam.exe.
 
-Extract the source package into a writable folder. Double-click `Build.bat`, or
-run `Build.bat --no-pause` in Command Prompt there. Output:
-`Build\E-Day-Gameplay-FOV.exe`. Building does not launch the game or helper.
+Build.bat uses `%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe` with
+/platform:x64 /target:exe /optimize+ and every E-Day-*.cs production file.
+There are no external SDK, assembler, network or game-file build dependencies.
+FixtureLayout.cs and the *Tests.cs files are excluded from production.
 
-Equivalent command from the source folder:
+Run Test.bat to compile and execute all included fixtures. The fixture compiler
+also uses /main to select one test entry point. Tests allocate and inspect only
+their own fake data; they do not attach to the game. No Python dependency is
+needed to build the helper or run these C# tests.
 
-```bat
-if not exist Build mkdir Build
-"%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:exe /platform:x64 /out:"Build\E-Day-Gameplay-FOV.exe" "E-Day-Gameplay-FOV.cs" "E-Day-GameplayRuntime.cs" "E-Day-GameplayFov.cs"
-```
+The cinematic ASM and disassembly, when present, match the embedded x64 wrapper
+before its pointer and validated fill-field relocations. They are provided for
+review; Build.bat does not assemble them. Native cinematic-member structures
+remain validated and intentionally are not guessed on unfamiliar code layouts.
 
-Copy the built executable, `Launch-E-Day-Gameplay-FOV.bat`, and
-`E-Day-gameplay-fov.txt` beside `GoWEDay-Steam.exe` for runtime use.
-
-## Source map
-
-- `E-Day-Gameplay-FOV.cs`: entry point, process checks, different-build consent,
-  read-only compatibility validation, and initialization retrying.
-- `E-Day-GameplayRuntime.cs`: memory access, object identities, camera manager
-  discovery, background watcher, session guard, and stop/restore signaling.
-- `E-Day-GameplayFov.cs`: independent configuration and ownership tracking;
-  adjusts/restores only gameplay multiplier offset `+0x5ea8`, with gameplay
-  target validation and exclusion during a valid cinematic target.
-- Batch files: readable source for launch, optional apply, and optional restore.
-- `GameplayFovTests.cs`: synthetic fixtures, excluded from the production build.
-
-This version does not compile or depend on the cinematic framing/template code.
-All dependencies are framework assemblies or Windows kernel32 APIs. There are
-no external DLLs, NuGet packages, obfuscation, generated-source prerequisites,
-embedded payloads, or post-build steps. Independently compiled binaries can
-have different hashes due to compiler version, timestamps, and module metadata.
-
-## Optional fixture tests
-
-After building, run these commands from the source folder:
-
-```bat
-"%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:exe /platform:x64 /main:GameplayFovTests /out:"Build\GameplayFovTests.exe" "E-Day-Gameplay-FOV.cs" "E-Day-GameplayRuntime.cs" "E-Day-GameplayFov.cs" "GameplayFovTests.cs"
-"Build\GameplayFovTests.exe"
-```
-
-These tests allocate their own memory and do not touch a running game. Keep the
-test executable in `Build` as shown: it writes its temporary configuration in
-its own directory. Do not run it beside the game's gameplay configuration.
+DISTRIBUTED-BINARY-SHA256.txt identifies this packaged EXE. Different compiler
+revisions or PE timestamps may yield different binary bytes from equivalent
+source builds. SHA256SUMS.txt lists all packaged source-file hashes.

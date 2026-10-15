@@ -8,7 +8,7 @@ using System.Threading;
 using System.Security.Cryptography;
 using System.Text;
 
-// Gameplay-only runtime data adjustment for the Steam full game, CL 4894958.
+// Gameplay-only runtime data adjustment for the Steam full game, CL 4909945, with validated dynamic address discovery.
 // No executable files are modified. Closing the game resets this change.
 public static class GameplayFovFix
 {
@@ -23,7 +23,7 @@ public static class GameplayFovFix
     {
         output.WriteLine("This game build has not been tested with the gameplay FOV fix.");
         output.WriteLine("Detected: "+version+" (module size "+size+")");
-        output.WriteLine("Tested: "+SupportedVersion+" (module size 322289664)");
+        output.WriteLine("Tested: "+SupportedVersion+" (module size 324030464)");
         output.WriteLine("Continuing may fail or cause incorrect framing or a game crash. Compatibility checks remain enabled.");
         while (true)
         {
@@ -46,7 +46,7 @@ public static class GameplayFovFix
         string token=BuildToken(game,game.MainModule);
         return approvedBuild==token ? " --build-consent "+token : "";
     }
-    const string SupportedVersion = "+++fenix2+fairlight-omega-release-CL-4894958";
+    const string SupportedVersion = "+++fenix2+fairlight-gamma-release-CL-4909945";
     [DllImport("kernel32", SetLastError=true)] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
     [DllImport("kernel32", SetLastError=true)] static extern bool ReadProcessMemory(IntPtr h, IntPtr address, byte[] data, UIntPtr size, out UIntPtr count);
     [DllImport("kernel32")] static extern bool CloseHandle(IntPtr h);
@@ -69,7 +69,7 @@ public static class GameplayFovFix
         foreach (ProcessModule module in game.Modules)
             if (module.ModuleName.IndexOf("EasyAntiCheat", StringComparison.OrdinalIgnoreCase) >= 0)
                 throw new InvalidOperationException("The game has anti-cheat loaded. Use the offline gameplay FOV launcher.");
-        bool differentBuild=main.FileVersionInfo.FileVersion!=SupportedVersion || main.ModuleMemorySize!=322289664;
+        bool differentBuild=main.FileVersionInfo.FileVersion!=SupportedVersion || main.ModuleMemorySize!=324030464;
         if (differentBuild && approvedBuild!=BuildToken(game,main))
         {
             if (hiddenWatcher) throw new InvalidOperationException("Different game build has no approval for this session. No changes made.");
@@ -81,22 +81,10 @@ public static class GameplayFovFix
         try
         {
             long basis = main.BaseAddress.ToInt64();
-            try
-            {
-                GameplayRuntime.ValidateMarkers(h, basis);
-                GameplayFov.ValidateMarkers(h, basis);
-            }
-            catch (NotReadyException ex)
-            {
-                if (differentBuild) throw new InvalidOperationException("This build's memory layout is incompatible: "+ex.Message+" An updated mod is required.");
-                throw;
-            }
-            catch (Win32Exception ex)
-            {
-                if (differentBuild) throw new InvalidOperationException("This build's memory layout could not be validated. No changes made. An updated mod may be required. "+ex.Message);
-                throw;
-            }
-            long managerClass=GameplayRuntime.Q(h,basis+0xed6a080);
+            GameLayout.Resolve(h,basis,main.ModuleMemorySize,false,true);
+            GameplayRuntime.ValidateMarkers(h,basis);
+            GameplayFov.ValidateMarkers(h,basis);
+            long managerClass=GameplayRuntime.Q(h,basis+GameLayout.Required.ManagerClass);
             if (managerClass==0) throw new NotReadyException("Gameplay camera class is not initialized yet.");
             new GameplayRuntime.Objects(h,basis);
         }
@@ -111,6 +99,7 @@ public static class GameplayFovFix
         {
             try { attempt(); return; }
             catch (Win32Exception) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
+            catch (GameLayout.InitializingException) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
             catch (NotReadyException) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
             if (!announced) { Console.WriteLine("Waiting for gameplay initialization"+(wait<0 ? " until ready or game exit." : ".")); announced=true; }
             Thread.Sleep(500);

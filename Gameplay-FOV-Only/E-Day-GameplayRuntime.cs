@@ -10,8 +10,6 @@ using System.Threading;
 // Contains object identity and gameplay watcher support only. No cinematic writes.
 internal static class GameplayRuntime
 {
-    const long ObjectManagerRva=0xe830dc0;
-    const ulong ObjectManagerKey=0x5f85652ab88d6999;
     [DllImport("kernel32", SetLastError=true)] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
     [DllImport("kernel32")] static extern bool CloseHandle(IntPtr h);
     [DllImport("kernel32", SetLastError=true)] static extern bool WriteProcessMemory(IntPtr h, IntPtr address, byte[] data, UIntPtr size, out UIntPtr count);
@@ -27,10 +25,8 @@ internal static class GameplayRuntime
     }
     public static void ValidateMarkers(IntPtr h,long basis)
     {
-        // Object array decoding and the gameplay camera manager class reference.
-        if (!Read(h,basis+0x3cd33ad,17).SequenceEqual(new byte[]{0x4c,0x8b,0x15,0x0c,0xda,0xb5,0x0a,0x48,0xbe,0x99,0x69,0x8d,0xb8,0x2a,0x65,0x85,0x5f}) ||
-            !Read(h,basis+0x162360f,7).SequenceEqual(new byte[]{0x48,0x8b,0x05,0x6a,0x6a,0x74,0x0d}))
-            throw new GameplayFovFix.NotReadyException("Gameplay object signatures differ. No changes made.");
+        if(GameLayout.Required.ObjectGlobal<=0 || GameLayout.Required.ManagerClass<=0)
+            throw new InvalidOperationException("Camera layout is not initialized.");
     }
     static string SharedName(Process game) { return "Local\\EDay32x9_"+game.Id+"_"+game.StartTime.ToUniversalTime().Ticks+"_Camera"; }
     static string Name(Process game, string kind) { return "Local\\EDayGameplayFov_"+game.Id+"_"+game.StartTime.ToUniversalTime().Ticks+"_"+kind; }
@@ -50,7 +46,7 @@ internal static class GameplayRuntime
             info.UseShellExecute=true; info.WindowStyle=ProcessWindowStyle.Hidden; info.WorkingDirectory=AppDomain.CurrentDomain.BaseDirectory;
             using (Process child=Process.Start(info))
             {
-                if (!ready.WaitOne(10000) || child.HasExited) throw new InvalidOperationException("Could not start the gameplay FOV helper.");
+                if (!ready.WaitOne(30000) || child.HasExited) throw new InvalidOperationException("Could not start the gameplay FOV helper.");
             }
         }
         Console.WriteLine("Gameplay FOV adjustment is running in the background until game exit.");
@@ -76,7 +72,7 @@ internal static class GameplayRuntime
         public IntPtr H; public long Chunks; public int Count;
         public Objects(IntPtr h,long basis)
         {
-            H=h; long manager=unchecked((long)((ulong)Q(h,basis+ObjectManagerRva)^ObjectManagerKey));
+            H=h; long manager=unchecked((long)((ulong)Q(h,basis+GameLayout.Required.ObjectGlobal)^GameLayout.Required.ObjectKey));
             byte[] header=Read(h,manager,40); Chunks=BitConverter.ToInt64(header,16); Count=BitConverter.ToInt32(header,36);
             if (Count<0 || Count>4000000 || Chunks<0x10000) throw new InvalidOperationException("Invalid game object array.");
         }
@@ -148,7 +144,7 @@ internal static class GameplayRuntime
                         managers.RemoveAll(value=>!objects.Valid(value,true));
                         if (managers.Count==0 && (!searched || search.ElapsedMilliseconds>=3000))
                         {
-                            long cls=Q(h,basis+0xed6a080);
+                            long cls=Q(h,basis+GameLayout.Required.ManagerClass);
                             if (cls!=0) managers=objects.FindNative(cls,true);
                             searched=true; search.Restart();
                         }

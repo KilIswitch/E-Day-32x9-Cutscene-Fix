@@ -1,31 +1,89 @@
-Gameplay-only variant - 2026-10-07
+Local fixture run, CL-4909945 release.
 
-Production build and supplied Build.bat succeeded with the Windows .NET
-Framework x64 compiler. The source contains only two gameplay multiplier write
-paths, for application and restoration, both at manager +0x5ea8. No cinematic
-width, overscan, crop, lens, template, or final-view-cache write path is included.
+PASS default 120 accepted
+PASS custom decimal accepted
+PASS disable setting accepted
+PASS nonfinite values rejected
+PASS unsupported extremes rejected
+PASS blank and locale ambiguity rejected
+PASS existing camera helper prevents simultaneous start
+PASS gameplay-only restore does not stop combined helper
+PASS 120 uses validated gameplay multiplier
+PASS final-view cache left untouched
+PASS live text change to 130 applied
+PASS invalid text retains last valid setting
+PASS cinematic target restores gameplay baseline
+PASS gameplay resumes after cinematic target ends
+PASS zero disables and restores gameplay FOV
+PASS undo preserves later in-game setting change
+PASS recycled object serial prevents restoration write
+PASS invalid gameplay target prevents writes
+PASS cinematic width limit unchanged
+PASS cinematic overscan and flags unchanged
+PASS cinematic fill setting unchanged
+21 fixtures passed; all memory belonged to this test process.
+PASS default 120 accepted
+PASS custom decimal accepted
+PASS disable setting accepted
+PASS nonfinite values rejected
+PASS unsupported extremes rejected
+PASS blank and locale ambiguity rejected
+PASS existing camera helper prevents simultaneous start
+PASS gameplay-only restore does not stop combined helper
+PASS 120 uses validated gameplay multiplier
+PASS final-view cache left untouched
+PASS live text change to 130 applied
+PASS invalid text retains last valid setting
+PASS cinematic target restores gameplay baseline
+PASS gameplay resumes after cinematic target ends
+PASS zero disables and restores gameplay FOV
+PASS undo preserves later in-game setting change
+PASS recycled object serial prevents restoration write
+PASS invalid gameplay target prevents writes
+PASS cinematic width limit unchanged
+PASS cinematic overscan and flags unchanged
+PASS cinematic fill setting unchanged
+21 fixtures passed; all memory belonged to this test process.
+PASS Yes accepts a compatibility attempt
+PASS short Yes accepted
+PASS case and whitespace accepted
+PASS No declines
+PASS short No accepted
+PASS empty answer defaults to No
+PASS unavailable input defaults to No
+PASS invalid answer asks again before declining
+PASS invalid answer asks again before accepting
+PASS relocated image resolves code, data and relative targets False/0
+PASS fields are decoded rather than guessed False/0
+PASS layout discovery and validation make no writes False/0
+PASS relocated image resolves code, data and relative targets False/196608
+PASS fields are decoded rather than guessed False/196608
+PASS layout discovery and validation make no writes False/196608
+PASS relocated image resolves code, data and relative targets True/0
+PASS fields are decoded rather than guessed True/0
+PASS layout discovery and validation make no writes True/0
+PASS relocated image resolves code, data and relative targets True/196608
+PASS fields are decoded rather than guessed True/196608
+PASS layout discovery and validation make no writes True/196608
+PASS ambiguous cinematic signature rejected
+PASS ambiguous cinematic signature rejected leaves all image data unchanged
+PASS missing view signature rejected
+PASS missing view signature rejected leaves all image data unchanged
+PASS out-of-bounds FOV field rejected
+PASS out-of-bounds FOV field rejected leaves all image data unchanged
+PASS changed slider clamp semantics rejected
+PASS changed slider clamp semantics rejected leaves all image data unchanged
+PASS setter/getter disagreement rejected
+PASS setter/getter disagreement rejected leaves all image data unchanged
+PASS changed camera flag layout rejected
+PASS changed camera flag layout rejected leaves all image data unchanged
+PASS native class size disagreement rejected
+PASS native class size disagreement rejected leaves all image data unchanged
+PASS ambiguous controller metadata rejected
+PASS ambiguous controller metadata rejected leaves all image data unchanged
+PASS conflicting object globals rejected
+PASS conflicting object globals rejected leaves all image data unchanged
+PASS 1000 masked pattern searches match the reference matcher
+31 layout checks passed; owned test memory only.
 
-21 synthetic memory/configuration/session fixtures passed:
-- Configuration: default 120, decimals, 0 disable, invalid/nonfinite/out-of-range.
-- Gameplay multiplier application, live editing, and invalid edit preservation.
-- Cinematic target exclusion and gameplay resumption afterward.
-- Restoration on disable and preservation of later game setting changes.
-- Recycled object serial and invalid target write guards.
-- Existing combined helper blocks simultaneous start.
-- Gameplay-only restore does not signal the combined helper to stop.
-- Final view cache, cinematic width limit, cinematic overscan/crop flags,
-  and cinematic fill setting remain unchanged.
-
-13 launcher/helper fixtures passed:
-- Absent Steam ID created/removed; existing correct ID preserved.
-- Different ID rejected and preserved.
-- Waits for game exit, including when the helper fails or is declined.
-- Exit code propagation, missing files, Steam requirement, running-game guard.
-- Launch-local environment changes leave parent settings intact.
-- Dummy incompatible game rejected when declined or after choosing Yes.
-
-The gameplay-only helper uses the same gameplay multiplier module previously
-tested visually with the combined version at 120 on CL 4894958, 5120x1440.
-This separate version has not been visually tested in a live game. The game was
-closed during packaging. No user's running game was modified in this task.
-No online safety, anti-cheat approval, or future-build compatibility is claimed.
+Live combined helper: user confirmed cinematic framing/no flashes and gameplay FOV/aiming. Restore/check/reapply succeeded.
