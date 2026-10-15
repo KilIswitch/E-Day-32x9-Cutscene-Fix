@@ -19,13 +19,7 @@ internal sealed class GameplayFov
 
     public static void ValidateMarkers(IntPtr h,long basis)
     {
-        // Setter: clamp to 60..90, divide by DefaultFOV (+340), store +5ea8.
-        // Getter: feed +5ea8 into the gameplay camera bridge.
-        if (!CameraFraming.Read(h,basis+0x7cc4750,33).SequenceEqual(new byte[]{
-            0xc5,0xf2,0x5d,0x05,0xd8,0x8a,0x1c,0x04,0xc5,0xfa,0x5f,0x05,0x0c,0x92,0x1c,0x04,
-            0xc5,0xfa,0x5e,0x89,0x40,0x03,0x00,0x00,0xc5,0xfa,0x11,0x89,0xa8,0x5e,0x00,0x00,0xc3}) ||
-            !CameraFraming.Read(h,basis+0x7cb48b2,8).SequenceEqual(new byte[]{0xc5,0xfa,0x10,0x83,0xa8,0x5e,0x00,0x00}))
-            throw new CinematicFix.NotReadyException("Gameplay FOV signatures differ. No changes made.");
+        GameLayout.ValidateGameplay(h,basis);
     }
     internal static bool ParseSetting(string text,out float value)
     {
@@ -59,18 +53,18 @@ internal sealed class GameplayFov
         var active=new HashSet<string>();
         foreach (CameraFraming.Ref manager in managers)
         {
-            if (!objects.Valid(manager,true) || CameraFraming.Q(h,manager.Address)!=basis+0xd8a6b30) continue;
-            long controller=CameraFraming.Q(h,manager.Address+0x328);
+            if (!objects.Valid(manager,true) || CameraFraming.Q(h,manager.Address)!=basis+GameLayout.Required.ManagerVtable) continue;
+            long controller=CameraFraming.Q(h,manager.Address+GameLayout.Required.ControllerField);
             if (controller==0 || CameraFraming.Q(h,controller)==0 || (CameraFraming.I(h,controller+8)&0x30)!=0) continue;
-            byte[] targetArray=CameraFraming.Read(h,manager.Address+0x3e10,16);
+            byte[] targetArray=CameraFraming.Read(h,manager.Address+GameLayout.Required.TargetField,16);
             long targets=BitConverter.ToInt64(targetArray,0);
             if (targets==0 || BitConverter.ToInt32(targetArray,8)!=4 || BitConverter.ToInt32(targetArray,12)<4) continue;
             byte[] targetRefs=CameraFraming.Read(h,targets,32);
             // Slot 0 is the gameplay camera target; slot 3 is a cinematic target.
             if (!LiveActor(objects,targetRefs.Take(8).ToArray()) ||
                 LiveActor(objects,targetRefs.Skip(24).Take(8).ToArray()) || desiredFov==0) continue;
-            float baseline=BitConverter.ToSingle(CameraFraming.Read(h,manager.Address+0x340,4),0);
-            float current=BitConverter.ToSingle(CameraFraming.Read(h,manager.Address+0x5ea8,4),0);
+            float baseline=BitConverter.ToSingle(CameraFraming.Read(h,manager.Address+GameLayout.Required.DefaultFovField,4),0);
+            float current=BitConverter.ToSingle(CameraFraming.Read(h,manager.Address+GameLayout.Required.FovField,4),0);
             if (!(baseline>=30 && baseline<=150 && current>=0.25f && current<=5)) continue;
             string key=manager.Index+":"+manager.Serial; Saved saved;
             if (!changed.TryGetValue(key,out saved))
@@ -90,7 +84,7 @@ internal sealed class GameplayFov
             }
             float desired=desiredFov/baseline;
             if (!(desired>=0.25f && desired<=5) || !objects.Valid(saved,true)) continue;
-            if (!CameraFraming.Same(current,desired)) CameraFraming.Write(h,manager.Address+0x5ea8,BitConverter.GetBytes(desired));
+            if (!CameraFraming.Same(current,desired)) CameraFraming.Write(h,manager.Address+GameLayout.Required.FovField,BitConverter.GetBytes(desired));
             saved.Applied=desired; active.Add(key);
         }
         foreach (string key in changed.Keys.Where(key=>!active.Contains(key)).ToArray())
@@ -98,9 +92,9 @@ internal sealed class GameplayFov
     }
     void RestoreOne(CameraFraming.Objects objects,Saved saved)
     {
-        if (!objects.Valid(saved,true) || CameraFraming.Q(h,saved.Address)!=basis+0xd8a6b30) return;
-        float current=BitConverter.ToSingle(CameraFraming.Read(h,saved.Address+0x5ea8,4),0);
-        if (CameraFraming.Same(current,saved.Applied)) CameraFraming.Write(h,saved.Address+0x5ea8,BitConverter.GetBytes(saved.Original));
+        if (!objects.Valid(saved,true) || CameraFraming.Q(h,saved.Address)!=basis+GameLayout.Required.ManagerVtable) return;
+        float current=BitConverter.ToSingle(CameraFraming.Read(h,saved.Address+GameLayout.Required.FovField,4),0);
+        if (CameraFraming.Same(current,saved.Applied)) CameraFraming.Write(h,saved.Address+GameLayout.Required.FovField,BitConverter.GetBytes(saved.Original));
     }
     public void Restore(CameraFraming.Objects objects)
     { foreach (Saved saved in changed.Values) RestoreOne(objects,saved); changed.Clear(); }

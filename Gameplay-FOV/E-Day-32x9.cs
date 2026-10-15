@@ -8,7 +8,7 @@ using System.Threading;
 using System.Security.Cryptography;
 using System.Text;
 
-// Runtime cinematic fix for the Steam full game, CL 4894958.
+// Runtime cinematic fix for the Steam full game, CL 4909945, with validated dynamic address discovery.
 // No executable files are modified. Closing the game resets this change.
 public static class CinematicFix
 {
@@ -23,7 +23,7 @@ public static class CinematicFix
     {
         output.WriteLine("This game build has not been tested with the 32:9 fix.");
         output.WriteLine("Detected: "+version+" (module size "+size+")");
-        output.WriteLine("Tested: "+SupportedVersion+" (module size 322289664)");
+        output.WriteLine("Tested: "+SupportedVersion+" (module size 324030464)");
         output.WriteLine("Continuing may fail or cause incorrect framing or a game crash. Compatibility checks remain enabled.");
         while (true)
         {
@@ -46,13 +46,7 @@ public static class CinematicFix
         string token=BuildToken(game,game.MainModule);
         return approvedBuild==token ? " --build-consent "+token : "";
     }
-    const string SupportedVersion = "+++fenix2+fairlight-omega-release-CL-4894958";
-    const long ContextRva = 0x08d6f491, LimitRva = 0x0e2189dc;
-    static readonly byte[] Context = { 0x41,0xc6,0x86,0x06,0x02,0x00,0x00,0x01,
-        0xc4,0xc1,0x7a,0x10,0x86,0x08,0x02,0x00,0x00,
-        0xc5,0xfa,0x5d,0x0d,0x32,0x95,0x4a,0x05,
-        0xc5,0xf8,0x29,0x74,0x24,0x30,
-        0xc5,0xf2,0x5f,0x35,0xe8,0xa9,0x07,0x04 };
+    const string SupportedVersion = "+++fenix2+fairlight-gamma-release-CL-4909945";
     static readonly byte[] Original = { 0x8e,0xe3,0x18,0x40 };
     static readonly byte[] Wide = { 0x39,0x8e,0x63,0x40 };
     [DllImport("kernel32", SetLastError=true)] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
@@ -79,7 +73,7 @@ public static class CinematicFix
         foreach (ProcessModule module in game.Modules)
             if (module.ModuleName.IndexOf("EasyAntiCheat", StringComparison.OrdinalIgnoreCase) >= 0)
                 throw new InvalidOperationException("The game has anti-cheat loaded. Use the offline 32:9 launcher.");
-        bool differentBuild=main.FileVersionInfo.FileVersion!=SupportedVersion || main.ModuleMemorySize!=322289664;
+        bool differentBuild=main.FileVersionInfo.FileVersion!=SupportedVersion || main.ModuleMemorySize!=324030464;
         if (differentBuild && approvedBuild!=BuildToken(game,main))
         {
             if (hiddenWatcher) throw new InvalidOperationException("Different game build has no approval for this session. No changes made.");
@@ -91,27 +85,11 @@ public static class CinematicFix
         try
         {
             long basis = main.BaseAddress.ToInt64();
-            try
-            {
-                if (!Read(h, new IntPtr(basis + ContextRva), Context.Length).SequenceEqual(Context))
-                    throw new NotReadyException("Cinematic function signature differs. No changes made.");
-                CameraFraming.ValidateMarkers(h, basis);
-                GameplayFov.ValidateMarkers(h, basis);
-            }
-            catch (NotReadyException ex)
-            {
-                if (differentBuild) throw new InvalidOperationException("This build's memory layout is incompatible: "+ex.Message+" An updated mod is required.");
-                throw;
-            }
-            catch (Win32Exception ex)
-            {
-                if (differentBuild) throw new InvalidOperationException("This build's memory layout could not be validated. No changes made. An updated mod may be required. "+ex.Message);
-                throw;
-            }
-            // The vminss instruction in Context resolves exactly to this data constant.
-            long resolved = basis + ContextRva + 17 + 8 + BitConverter.ToInt32(Context, 21);
-            if (resolved != basis + LimitRva) throw new InvalidOperationException("Unexpected cinematic limit address.");
-            IntPtr address = new IntPtr(resolved);
+            GameLayout.Resolve(h,basis,main.ModuleMemorySize,true,true);
+            GameLayout.ValidateView(h,basis,CameraFraming.Running(game));
+            CameraFraming.ValidateMarkers(h,basis);
+            GameplayFov.ValidateMarkers(h,basis);
+            IntPtr address=new IntPtr(basis+GameLayout.Required.Limit);
             byte[] before = Read(h, address, 4);
             if (!before.SequenceEqual(Original) && !before.SequenceEqual(Wide))
                 throw new NotReadyException("Cinematic limit contains an unexpected value. No changes made.");
@@ -150,6 +128,7 @@ public static class CinematicFix
         {
             try { attempt(); return; }
             catch (Win32Exception) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
+            catch (GameLayout.InitializingException) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
             catch (NotReadyException) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
             if (!announced) { Console.WriteLine("Waiting for cinematic initialization"+(wait<0 ? " until ready or game exit." : ".")); announced=true; }
             Thread.Sleep(500);

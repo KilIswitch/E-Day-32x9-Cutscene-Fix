@@ -168,7 +168,7 @@ jne restore_owned
 mov rdx, [r10+40]
 cmp [rcx], rdx
 jne restore_owned
-movss xmm2, [rcx+0x3a04]
+movss xmm2, [rcx+0x33445566] ; relocated to validated cinematic fill field
 comiss xmm2, [r10+96]
 jbe restore_owned
 comiss xmm2, [r10+120]

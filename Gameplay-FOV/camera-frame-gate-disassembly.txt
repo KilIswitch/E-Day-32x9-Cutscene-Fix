@@ -1,3 +1,4 @@
+Windows x64 wrapper before its two pointer relocations and cinematic fill-field relocation.
 0000: push rbx
 0001: sub rsp, 0x70
 0005: mov rbx, rcx
@@ -147,7 +148,7 @@
 029e: mov rdx, qword ptr [r10 + 0x28]
 02a2: cmp qword ptr [rcx], rdx
 02a5: jne 0x415
-02ab: movss xmm2, dword ptr [rcx + 0x3a04]
+02ab: movss xmm2, dword ptr [rcx + 0x33445566]
 02b3: comiss xmm2, dword ptr [r10 + 0x60]
 02b8: jbe 0x415
 02be: comiss xmm2, dword ptr [r10 + 0x78]

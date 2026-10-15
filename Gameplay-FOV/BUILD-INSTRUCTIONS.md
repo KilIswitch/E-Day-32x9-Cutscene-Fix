@@ -1,24 +1,26 @@
-# Build from source
+# Build: 32:9 cutscenes + gameplay FOV
 
-On 64-bit Windows with .NET Framework 4 installed, double-click Build.bat or run
-`Build.bat --no-pause`. It uses the Windows Framework64 v4.0.30319 csc.exe and
-outputs Build/E-Day-32x9-FOV.exe. No external SDK, assembler, network download, or game file
-is needed to compile. Copy that helper with the runtime launcher and settings.
+1. Download/clone this repository or extract the matching Source ZIP to a writable directory on 64-bit Windows.
+2. With .NET Framework 4.x installed, double-click Build.bat (or run
+   `Build.bat --no-pause`).
+3. The result is `Build/E-Day-32x9-FOV.exe`. Copy it with the launcher and settings files
+   described in README.md beside GoWEDay-Steam.exe.
 
-The readable camera-frame-gate.asm and its disassembly document the embedded
-Windows x64 wrapper. E-Day-CameraFrameGate.cs includes its machine bytes and
-patches two allocation-specific pointer relocations; the normal build does not
-assemble external files.
+Build.bat uses `%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe` with
+/platform:x64 /target:exe /optimize+ and every E-Day-*.cs production file.
+There are no external SDK, assembler, network or game-file build dependencies.
+FixtureLayout.cs and the *Tests.cs files are excluded from production.
 
-Run `Test.bat` to compile and run every included fixture.
+Run Test.bat to compile and execute all included fixtures. The fixture compiler
+also uses /main to select one test entry point. Tests allocate and inspect only
+their own fake data; they do not attach to the game. No Python dependency is
+needed to build the helper or run these C# tests.
 
-Fixtures execute against allocated fake camera and dispatch data in their own
-test process. They do not open or modify the game. Compile all production E-Day-*.cs files plus the desired fixture with csc.exe /nologo /platform:x64
-/target:exe /main:CameraFrameGateTests /out:Build/CameraFrameGateTests.exe.
-For lens fixtures use /main:LensAdaptiveTests, and in the combined variant use
-/main:GameplayFovTests for gameplay fixtures. Run each resulting test executable.
-The test source declares its Main entry explicitly if inspection is needed.
+The cinematic ASM and disassembly, when present, match the embedded x64 wrapper
+before its pointer and validated fill-field relocations. They are provided for
+review; Build.bat does not assemble them. Native cinematic-member structures
+remain validated and intentionally are not guessed on unfamiliar code layouts.
 
-See VALIDATION.txt and SHA256SUMS.txt for checks and package hashes. Compiler
-output bytes may differ across compiler revisions; source builds retain the same
-behavior without requiring byte-identical PE output.
+DISTRIBUTED-BINARY-SHA256.txt identifies this packaged EXE. Different compiler
+revisions or PE timestamps may yield different binary bytes from equivalent
+source builds. SHA256SUMS.txt lists all packaged source-file hashes.
