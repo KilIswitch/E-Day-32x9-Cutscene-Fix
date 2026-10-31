@@ -1,4 +1,4 @@
-# CL-4909945 code and memory review
+# CL-4927986 startup and memory review
 
 All variants include E-Day-GameLayout.cs. It opens no additional process handle;
 it reads the validated target through the caller's existing handle, captures
@@ -35,3 +35,17 @@ obfuscation, service installs or permanent environment changes.
 
 All three sources and tests are included. See NEXUS-FOV-REVIEW.md for build
 instructions, binary hashes, test counts and explicit validation limits.
+
+## Current startup policy change
+
+Missing native class registration now throws GameLayout.InitializingException
+instead of IncompatibleException. UntilReady retries this condition until the
+requested wait ends or the game exits; the normal launcher requests forever.
+The resolver publishes only a fully validated candidate. Other incompatibility
+conditions remain fatal. The discovery banner is announced once per search,
+and initialization-reason changes are reported by the readiness loop.
+
+All three entry points automatically announce an untested build and proceed to
+mandatory validation without Console.ReadLine or approval-token arguments.
+BuildPolicyTests replaces the removed BuildPromptTests. The framing wrapper,
+camera writes, gameplay behavior and restoration/lifetime policy are unchanged.

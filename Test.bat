@@ -12,9 +12,9 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 "%~dp0Build\LensAdaptiveTests.exe"
 if errorlevel 1 exit /b 1
-"%EDAY_COMPILER%" /nologo /optimize+ /platform:x64 /target:exe /main:BuildPromptTests /out:"%~dp0Build\BuildPromptTests.exe" "%~dp0E-Day-*.cs" "%~dp0FixtureLayout.cs" "%~dp0BuildPromptTests.cs"
+"%EDAY_COMPILER%" /nologo /optimize+ /platform:x64 /target:exe /main:BuildPolicyTests /out:"%~dp0Build\BuildPolicyTests.exe" "%~dp0E-Day-*.cs" "%~dp0FixtureLayout.cs" "%~dp0BuildPolicyTests.cs"
 if errorlevel 1 exit /b 1
-"%~dp0Build\BuildPromptTests.exe"
+"%~dp0Build\BuildPolicyTests.exe"
 if errorlevel 1 exit /b 1
 "%EDAY_COMPILER%" /nologo /optimize+ /platform:x64 /target:exe /main:GammaLayoutTests /out:"%~dp0Build\GammaLayoutTests.exe" "%~dp0E-Day-*.cs" "%~dp0FixtureLayout.cs" "%~dp0LayoutTests.cs"
 if errorlevel 1 exit /b 1

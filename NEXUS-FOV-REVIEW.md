@@ -1,9 +1,9 @@
-# Nexus review: CL-4909945 and validated dynamic layouts
+# Nexus review: CL-4927986 startup fix and automatic build validation
 
-This source revision updates all three Steam helpers for
-+++fenix2+fairlight-gamma-release-CL-4909945 (module size 324030464).
-The binaries identified here were packaged on October 15, 2026. This guide
-provides source/build evidence, not Nexus or anti-cheat approval.
+Updated October 30, 2026. All three Steam variants target the tested build
++++fenix2+fairlight-omega-release-CL-4927986 (module size 323710976).
+This guide identifies source and build evidence; it does not grant submission
+or anti-cheat approval. Game Pass remains unverified.
 
 | Variant | Complete source | Build instructions | Output |
 | --- | --- | --- | --- |
@@ -11,53 +11,68 @@ provides source/build evidence, not Nexus or anti-cheat approval.
 | Cutscenes + gameplay FOV | [Gameplay-FOV](Gameplay-FOV/) | [Build](Gameplay-FOV/BUILD-INSTRUCTIONS.md) | Build/E-Day-32x9-FOV.exe |
 | Gameplay FOV only | [Gameplay-FOV-Only](Gameplay-FOV-Only/) | [Build](Gameplay-FOV-Only/BUILD-INSTRUCTIONS.md) | Build/E-Day-Gameplay-FOV.exe |
 
-## Building and reviewing
+## Changes under review
 
-Download or clone this repository, open the chosen folder, and run Build.bat
-or `Build.bat --no-pause`. It uses Windows Framework64 v4.0.30319 csc.exe and
-all E-Day-*.cs production files in that folder. No game, SDK, downloaded package
-or assembler is needed. Test.bat compiles and runs that variant's fixtures.
+The previous resolver could see some native class registration code before the
+required TCPlayerCameraManager_CamBridge registration became visible, causing
+an intermittent fatal compatibility error. A missing required registration is
+now an initialization condition. The helper retries without publishing a layout
+or making game changes until the complete candidate passes validation.
+It reports initialization-reason changes without repeating the discovery banner.
 
-GameLayout (E-Day-GameLayout.cs) discovers executable addresses and selected
-manager fields from masked code, relative references, native class registration,
-default-object vtables and property metadata. It validates the complete required
-layout before publication. There is no fallback to old fixed RVAs. An untested
-build still requires Yes/No consent; Yes never skips layout validation.
-Compatible relocations/field changes can be discovered; changed code/native
-structures can still require another revision. Game Pass is not validated.
+The Yes/No build-number question and watcher consent-token plumbing are removed.
+Different build numbers automatically attempt required discovery/validation.
+Signature, field, numeric-bound, native-identity and protected-session checks
+remain mandatory. Contradictory or incompatible view/field signatures still stop
+the helper. Missing class registration keeps initialization waiting until ready
+or game exit. No old-address fallback or forced compatibility is introduced.
 
-The cinematic wrapper retains its synchronous lens-aware correction and asset
-exclusion. Its readable assembly/disassembly match the embedded machine bytes
-before two pointer relocations and the newly validated cinematic fill-field
-displacement. [Review notes](REVIEW-NOTES.md) describe memory writes/lifetime.
+Cinematic framing, native wrapper bytes/relocations, gameplay FOV policy,
+restoration ownership, launch-local environment and Steam-ID handling remain
+unchanged from the prior revision. See [review notes](REVIEW-NOTES.md).
+
+## Build and test
+
+Download/clone the source, open the chosen variant folder, and run Build.bat or
+`Build.bat --no-pause`. It uses the Windows Framework64 v4.0.30319 csc.exe,
+/platform:x64 /target:exe /optimize+, and all E-Day-*.cs production files.
+No SDK, game, assembler or downloaded dependency is required. Test.bat runs the
+owned-process fixtures. BuildPolicyTests.cs replaces the obsolete prompt tests.
+
+Cutscenes-only: 111 checks. Combined: 143 checks. Gameplay-only: 80 checks.
+Each includes 36 layout checks, staged registration/retry coverage, rejection
+of real signature mismatches, and 1000 masked-search comparisons. Build-policy
+tests verify automatic validation without input and one announcement per build.
 
 ## Distributed executable SHA-256
 
 | Executable | SHA-256 |
 | --- | --- |
-| E-Day-32x9.exe | `5109773414da628dec886504683747a629eed5eca5e080e3ebed1204cbdbba4d` |
-| E-Day-32x9-FOV.exe | `28591350d03e037c7893e2ba9d5b7ffee4b535b6308e2ffc789d52357b5941ef` |
-| E-Day-Gameplay-FOV.exe | `9da2fd816cda483f26e4bacc00112e668f5ed1f1f1bb64d7e5e210e029e63785` |
+| E-Day-32x9.exe | `0a291a748b7a13445686d2ad331038aba7ecac3e06f0a739ba8006dab15dc5be` |
+| E-Day-32x9-FOV.exe | `657608ca1346edaa6adf219bf2dcc168e4ec939360ca1b6ad58bc4152fe3bc78` |
+| E-Day-Gameplay-FOV.exe | `34eb1e8648b237c4982070a39804f4ffe77ccb111b372ca1cd7337b4dd071266` |
 
-Each source folder has DISTRIBUTED-BINARY-SHA256.txt and a SHA256SUMS.txt source
-manifest. Executables are excluded from GitHub. PE metadata/compiler revisions
-can change rebuild hashes; byte-identical recompilation is not claimed.
+Each folder contains DISTRIBUTED-BINARY-SHA256.txt and SHA256SUMS.txt. The
+repository contains full source rather than compiled binaries. Compiler/PE
+metadata may produce different rebuild hashes; byte-identical builds are not
+claimed.
 
-## Validation
+## Live evidence and limits
 
-Cutscenes-only: 113 checks. Combined: 145 checks. Gameplay-only: 82 checks.
-Each suite includes 31 layout checks (including 1000 masked-search comparisons).
-Layout fixtures cover relocated images, old/new manager members, invalid field
-bounds, ambiguous/missing signatures, changed clamp constants, metadata conflicts
-and object identities. Camera and gameplay fixtures use both member layouts.
-All fixture memory belongs to the test process; tests never attach to the game.
+The old resolver reported the missing manager registration at 6.80 seconds;
+the same fresh launch passed every layout check at 28.18 seconds when the
+read-only diagnostic continued. The corrected resolver passed three fresh-start
+checks at approximately 27-28 seconds with no incompatible results.
 
-The combined helper was live-tested on CL-4909945 at 5120x1440. The user confirmed
-correct cutscene framing with no camera-change flashes and working gameplay FOV
-and aiming. Undo/check/reapply succeeded; existing settings hashes were preserved.
-Other variants share the validated production components and passed their own
-fixtures; they were not separately visually tested. Full campaign/all cameras,
-other resolutions, future updates and Game Pass remain unverified.
+The installed combined launcher also encountered the previously failing stage,
+waited, validated the complete layout, applied the cinematic limit and started
+its background helper without a question. A subsequent check confirmed it active.
+Existing framing/FOV text settings were preserved and the installed executable
+matched the packaged hash. No new visual framing test was performed for this
+startup-only change. Other variants share the corrected components and passed
+their own fixtures; they were not separately live-launched.
 
-See [root validation](VALIDATION.txt), [combined validation](Gameplay-FOV/VALIDATION.txt),
-and [gameplay-only validation](Gameplay-FOV-Only/VALIDATION.txt).
+Full campaign, every camera/resolution, Game Pass and future structural updates
+remain unverified. See [root validation](VALIDATION.txt),
+[combined validation](Gameplay-FOV/VALIDATION.txt), and
+[gameplay-only validation](Gameplay-FOV-Only/VALIDATION.txt).

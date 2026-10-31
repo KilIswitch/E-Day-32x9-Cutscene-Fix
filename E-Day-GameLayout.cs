@@ -21,7 +21,7 @@ internal sealed class GameLayout
     internal bool Cinematic,Gameplay;
     internal static GameLayout Current;
     internal static GameLayout Required { get { if(Current==null) throw new InvalidOperationException("Camera layout has not been resolved."); return Current; } }
-    static long cachedBasis; static int cachedSize;
+    static long cachedBasis; static int cachedSize; static bool discoveryAnnounced;
     [DllImport("kernel32",SetLastError=true)] static extern bool ReadProcessMemory(IntPtr h,IntPtr address,byte[] buffer,UIntPtr count,out UIntPtr read);
     [DllImport("kernel32",SetLastError=true)] static extern UIntPtr VirtualQueryEx(IntPtr h,IntPtr address,out Region info,UIntPtr size);
     [StructLayout(LayoutKind.Sequential)] struct Region
@@ -166,7 +166,11 @@ internal sealed class GameLayout
                 throw new IncompatibleException("Native virtual table differs for "+name+".");
             found.Add(name,new ClassInfo{Global=global,Class=cls,Default=cdo,Vtable=table,Size=size});
         }
-        foreach(string name in names) if(!found.ContainsKey(name)) throw new IncompatibleException("Native class registration missing: "+name+".");
+        // Registration code becomes readable in stages during startup. Finding
+        // some native getters does not mean every required class is visible yet.
+        // Keep the entire candidate unpublished and let UntilReady rescan.
+        foreach(string name in names) if(!found.ContainsKey(name))
+            throw new InitializingException("Waiting for native class registration: "+name+". No changes made.");
         return found;
     }
     static int Property(Image image,string name)
@@ -256,10 +260,10 @@ internal sealed class GameLayout
     internal static void Resolve(IntPtr h,long basis,int size,bool cinematic,bool gameplay)
     {
         if(Current!=null && cachedBasis==basis && cachedSize==size && (!cinematic || Current.Cinematic) && (!gameplay || Current.Gameplay)) return;
-        Console.WriteLine("Locating and validating the camera layout...");
+        if(!discoveryAnnounced) { Console.WriteLine("Locating and validating the camera layout..."); discoveryAnnounced=true; }
         GameLayout candidate=Discover(Capture(h,basis,size),h,cinematic,gameplay);
         // Publish only the complete validated result; no partial address fallback.
-        Current=candidate; cachedBasis=basis; cachedSize=size;
+        Current=candidate; cachedBasis=basis; cachedSize=size; discoveryAnnounced=false;
         Console.WriteLine("Camera layout resolved: object array 0x"+candidate.ObjectGlobal.ToString("x")+
             (cinematic ? ", view 0x"+candidate.View.ToString("x")+", fill +0x"+candidate.FillField.ToString("x") : "")+
             (gameplay ? ", gameplay FOV +0x"+candidate.FovField.ToString("x") : "")+".");

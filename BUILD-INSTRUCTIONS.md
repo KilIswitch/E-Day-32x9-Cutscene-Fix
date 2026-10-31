@@ -1,26 +1,19 @@
-# Build: 32:9 cutscenes only
+# Build 32:9 cutscenes only
 
-1. Download/clone this repository or extract the matching Source ZIP to a writable directory on 64-bit Windows.
-2. With .NET Framework 4.x installed, double-click Build.bat (or run
-   `Build.bat --no-pause`).
-3. The result is `Build/E-Day-32x9.exe`. Copy it with the launcher and settings files
-   described in README.md beside GoWEDay-Steam.exe.
+Download/clone this repository or extract the matching Source ZIP on 64-bit Windows with .NET Framework 4.x.
+Double-click Build.bat or run `Build.bat --no-pause`.
+Output: Build/E-Day-32x9.exe
 
-Build.bat uses `%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe` with
-/platform:x64 /target:exe /optimize+ and every E-Day-*.cs production file.
-There are no external SDK, assembler, network or game-file build dependencies.
-FixtureLayout.cs and the *Tests.cs files are excluded from production.
+The script uses %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe,
+/optimize+ /target:exe /platform:x64, and E-Day-*.cs production inputs.
+No downloaded dependency, assembler, game file or external SDK is required.
+FixtureLayout.cs and test entry points are excluded from production.
 
-Run Test.bat to compile and execute all included fixtures. The fixture compiler
-also uses /main to select one test entry point. Tests allocate and inspect only
-their own fake data; they do not attach to the game. No Python dependency is
-needed to build the helper or run these C# tests.
+Run Test.bat for all C# fixtures, including staged-startup and automatic-build
+policy tests. These tests inspect/change only their own allocated fixture data.
+The optional cinematic assembly/disassembly documents the unchanged embedded
+view wrapper and its validated relocations. Normal builds do not assemble it.
 
-The cinematic ASM and disassembly, when present, match the embedded x64 wrapper
-before its pointer and validated fill-field relocations. They are provided for
-review; Build.bat does not assemble them. Native cinematic-member structures
-remain validated and intentionally are not guessed on unfamiliar code layouts.
-
-DISTRIBUTED-BINARY-SHA256.txt identifies this packaged EXE. Different compiler
-revisions or PE timestamps may yield different binary bytes from equivalent
-source builds. SHA256SUMS.txt lists all packaged source-file hashes.
+DISTRIBUTED-BINARY-SHA256.txt identifies the packaged executable. Compiler/PE
+metadata differences can produce different rebuild bytes. Source manifests
+identify the exact package inputs; byte-identical rebuilds are not claimed.
