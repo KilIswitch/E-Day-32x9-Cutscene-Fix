@@ -1,4 +1,4 @@
-Local fixture run, CL-4909945 release.
+CL-4927986 startup retry and automatic build detection.
 
 PASS default 120 accepted
 PASS custom decimal accepted
@@ -44,15 +44,9 @@ PASS cinematic width limit unchanged
 PASS cinematic overscan and flags unchanged
 PASS cinematic fill setting unchanged
 21 fixtures passed; all memory belonged to this test process.
-PASS Yes accepts a compatibility attempt
-PASS short Yes accepted
-PASS case and whitespace accepted
-PASS No declines
-PASS short No accepted
-PASS empty answer defaults to No
-PASS unavailable input defaults to No
-PASS invalid answer asks again before declining
-PASS invalid answer asks again before accepting
+PASS unknown build announces automatic required validation without prompting
+PASS retries announce the same build only once
+2 build-policy checks passed.
 PASS relocated image resolves code, data and relative targets False/0
 PASS fields are decoded rather than guessed False/0
 PASS layout discovery and validation make no writes False/0
@@ -65,6 +59,13 @@ PASS layout discovery and validation make no writes True/0
 PASS relocated image resolves code, data and relative targets True/196608
 PASS fields are decoded rather than guessed True/196608
 PASS layout discovery and validation make no writes True/196608
+PASS partial native registration remains a retryable startup condition
+PASS incomplete startup publishes no layout
+PASS incomplete startup leaves cinematic limit untouched
+Waiting for native class registration: TCPlayerCameraManager_CamBridge. No changes made.
+Waiting for gameplay initialization.
+PASS normal readiness loop retries partial metadata and succeeds when registration appears
+PASS a genuine view-signature mismatch still stops without retries or bypasses
 PASS ambiguous cinematic signature rejected
 PASS ambiguous cinematic signature rejected leaves all image data unchanged
 PASS missing view signature rejected
@@ -84,6 +85,10 @@ PASS ambiguous controller metadata rejected leaves all image data unchanged
 PASS conflicting object globals rejected
 PASS conflicting object globals rejected leaves all image data unchanged
 PASS 1000 masked pattern searches match the reference matcher
-31 layout checks passed; owned test memory only.
+36 layout checks passed; owned test memory only.
 
-Live combined helper: user confirmed cinematic framing/no flashes and gameplay FOV/aiming. Restore/check/reapply succeeded.
+Live startup evidence: old resolver reported missing manager registration at 6.80 seconds, then passed at 28.18 seconds when the read-only diagnostic continued.
+Corrected resolver: three fresh-start diagnostic runs passed at approximately 27-28 seconds, with no incompatible results. No game changes in those diagnostic runs.
+Final installed combined launcher check passed: it encountered the previously failing missing-manager-registration stage, waited through native class/default initialization, resolved the complete layout, applied the cinematic limit and started the background framing helper. No build question was shown.
+A subsequent --check confirmed the cinematic limit and framing helper were active; the installed EXE matched the packaged hash and framing/gameplay settings hashes were unchanged.
+Other variants share the same resolver/startup policy and passed their own fixtures; they were not separately visually tested.

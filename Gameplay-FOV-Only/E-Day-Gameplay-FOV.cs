@@ -5,10 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Security.Cryptography;
-using System.Text;
 
-// Gameplay-only runtime data adjustment for the Steam full game, CL 4909945, with validated dynamic address discovery.
+// Gameplay-only runtime data adjustment for the Steam full game, CL 4927986, with validated dynamic address discovery.
 // No executable files are modified. Closing the game resets this change.
 public static class GameplayFovFix
 {
@@ -16,37 +14,16 @@ public static class GameplayFovFix
     {
         public NotReadyException(string message) : base(message) { }
     }
-    internal sealed class BuildDeclinedException : InvalidOperationException { }
-    static string approvedBuild;
-    static bool hiddenWatcher;
-    internal static bool AskDifferentBuild(string version,int size,TextReader input,TextWriter output)
+    static string lastBuildAnnouncement;
+    internal static void AnnounceBuild(string version,int size,System.IO.TextWriter output)
     {
-        output.WriteLine("This game build has not been tested with the gameplay FOV fix.");
-        output.WriteLine("Detected: "+version+" (module size "+size+")");
-        output.WriteLine("Tested: "+SupportedVersion+" (module size 324030464)");
-        output.WriteLine("Continuing may fail or cause incorrect framing or a game crash. Compatibility checks remain enabled.");
-        while (true)
-        {
-            output.Write("Continue trying the mod for this game session? [Yes/No]: "); output.Flush();
-            string answer=input.ReadLine();
-            if (answer==null) return false;
-            answer=answer.Trim();
-            if (String.Equals(answer,"yes",StringComparison.OrdinalIgnoreCase) || String.Equals(answer,"y",StringComparison.OrdinalIgnoreCase)) return true;
-            if (answer.Length==0 || String.Equals(answer,"no",StringComparison.OrdinalIgnoreCase) || String.Equals(answer,"n",StringComparison.OrdinalIgnoreCase)) return false;
-            output.WriteLine("Please enter Yes or No.");
-        }
+        if(version==SupportedVersion && size==323710976) return;
+        string identity=version+"|"+size;
+        if(lastBuildAnnouncement==identity) return;
+        output.WriteLine("Untested game build detected: "+version+" (module size "+size+"). Continuing with required camera layout validation.");
+        lastBuildAnnouncement=identity;
     }
-    static string BuildToken(Process game,ProcessModule main)
-    {
-        string identity=game.Id+"|"+game.StartTime.ToUniversalTime().Ticks+"|"+main.FileVersionInfo.FileVersion+"|"+main.ModuleMemorySize;
-        using (var sha=SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(identity))).Replace("-","");
-    }
-    internal static string WatcherBuildArgument(Process game)
-    {
-        string token=BuildToken(game,game.MainModule);
-        return approvedBuild==token ? " --build-consent "+token : "";
-    }
-    const string SupportedVersion = "+++fenix2+fairlight-gamma-release-CL-4909945";
+    const string SupportedVersion = "+++fenix2+fairlight-omega-release-CL-4927986";
     [DllImport("kernel32", SetLastError=true)] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
     [DllImport("kernel32", SetLastError=true)] static extern bool ReadProcessMemory(IntPtr h, IntPtr address, byte[] data, UIntPtr size, out UIntPtr count);
     [DllImport("kernel32")] static extern bool CloseHandle(IntPtr h);
@@ -69,13 +46,7 @@ public static class GameplayFovFix
         foreach (ProcessModule module in game.Modules)
             if (module.ModuleName.IndexOf("EasyAntiCheat", StringComparison.OrdinalIgnoreCase) >= 0)
                 throw new InvalidOperationException("The game has anti-cheat loaded. Use the offline gameplay FOV launcher.");
-        bool differentBuild=main.FileVersionInfo.FileVersion!=SupportedVersion || main.ModuleMemorySize!=324030464;
-        if (differentBuild && approvedBuild!=BuildToken(game,main))
-        {
-            if (hiddenWatcher) throw new InvalidOperationException("Different game build has no approval for this session. No changes made.");
-            if (!AskDifferentBuild(main.FileVersionInfo.FileVersion,main.ModuleMemorySize,Console.In,Console.Out)) throw new BuildDeclinedException();
-            approvedBuild=BuildToken(game,main);
-        }
+        AnnounceBuild(main.FileVersionInfo.FileVersion,main.ModuleMemorySize,Console.Out);
         IntPtr h = OpenProcess(0x410u, false, game.Id);
         if (h == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error(), "Cannot access the game process.");
         try
@@ -94,12 +65,16 @@ public static class GameplayFovFix
     // Readiness failures never write memory. A wait of -1 retries until game exit.
     internal static void UntilReady(Process game,int wait,Action attempt)
     {
-        Stopwatch timer=Stopwatch.StartNew(); bool announced=false;
+        Stopwatch timer=Stopwatch.StartNew(); bool announced=false; string previousReason=null;
         while (true)
         {
             try { attempt(); return; }
             catch (Win32Exception) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
-            catch (GameLayout.InitializingException) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
+            catch (GameLayout.InitializingException ex)
+            {
+                if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw;
+                if(previousReason!=ex.Message) { Console.WriteLine(ex.Message); previousReason=ex.Message; }
+            }
             catch (NotReadyException) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
             if (!announced) { Console.WriteLine("Waiting for gameplay initialization"+(wait<0 ? " until ready or game exit." : ".")); announced=true; }
             Thread.Sleep(500);
@@ -109,8 +84,8 @@ public static class GameplayFovFix
     {
         try
         {
-            int pid = 0, wait = 0; bool check = false, restore = false, watch = false; string consent=null;
-            approvedBuild=null; hiddenWatcher=false;
+            int pid = 0, wait = 0; bool check = false, restore = false, watch = false;
+            lastBuildAnnouncement=null;
             for (int i=0; i<args.Length; i++)
             {
                 if (args[i] == "--pid" && i+1<args.Length) pid = int.Parse(args[++i]);
@@ -119,11 +94,9 @@ public static class GameplayFovFix
                 else if (args[i] == "--check") check = true;
                 else if (args[i] == "--restore") restore = true;
                 else if (args[i] == "--watch") watch = true;
-                else if (args[i] == "--build-consent" && i+1<args.Length) consent=args[++i];
                 else throw new ArgumentException("Usage: E-Day-Gameplay-FOV.exe [--pid ID] [--wait SECONDS|forever] [--check | --restore]");
             }
-            if (wait < -1 || wait > 180 || (check && restore) || (watch && (check || restore)) || (consent!=null && (!watch || consent.Length!=64 || !consent.All(Uri.IsHexDigit)))) throw new ArgumentException("Invalid arguments.");
-            hiddenWatcher=watch; approvedBuild=consent;
+            if (wait < -1 || wait > 180 || (check && restore) || (watch && (check || restore))) throw new ArgumentException("Invalid arguments.");
             Process game;
             if (pid != 0) game = Process.GetProcessById(pid);
             else
@@ -149,7 +122,6 @@ public static class GameplayFovFix
                 return 0;
             }
         }
-        catch (BuildDeclinedException) { Console.WriteLine("gameplay FOV fix skipped: unsupported build declined. No changes made. The game can continue without the mod."); return 2; }
         catch (Exception ex) { Console.Error.WriteLine("gameplay FOV fix: " + ex.Message); return 1; }
     }
 }

@@ -42,7 +42,7 @@ internal static class GameplayRuntime
         catch (WaitHandleCannotBeOpenedException) { }
         using (var ready=new EventWaitHandle(false,EventResetMode.ManualReset,Name(game,"Ready")))
         {
-            var info=new ProcessStartInfo(Process.GetCurrentProcess().MainModule.FileName,"--pid "+game.Id+" --watch"+GameplayFovFix.WatcherBuildArgument(game));
+            var info=new ProcessStartInfo(Process.GetCurrentProcess().MainModule.FileName,"--pid "+game.Id+" --watch");
             info.UseShellExecute=true; info.WindowStyle=ProcessWindowStyle.Hidden; info.WorkingDirectory=AppDomain.CurrentDomain.BaseDirectory;
             using (Process child=Process.Start(info))
             {

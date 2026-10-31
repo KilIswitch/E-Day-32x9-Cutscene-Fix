@@ -108,6 +108,33 @@ internal static class GammaLayoutTests
     GameLayout.Current=l;GameLayout.ValidateView(f.Handle,f.Basis,false);GameLayout.ValidateGameplay(f.Handle,f.Basis);
     Assert(f.Image.Parts.Select((p,i)=>p.Data.SequenceEqual(before[i])).All(v=>v),"layout discovery and validation make no writes "+gamma+"/"+shift);
    }
+  // Reproduce staged startup: several getters are visible before the manager.
+  using(var f=new Fixture(0,true))
+  {
+   byte[] header=f.Image.At(0x6000,23);f.Put(0x6000,new byte[]{0x90});
+   GameLayout.Current=null;bool deferred=false;
+   try { GameLayout.Discover(f.Image,f.Handle,true,true); }
+   catch(GameLayout.InitializingException ex) { deferred=ex.Message.Contains("TCPlayerCameraManager_CamBridge"); }
+   Assert(deferred,"partial native registration remains a retryable startup condition");
+   Assert(GameLayout.Current==null,"incomplete startup publishes no layout");
+   Assert(BitConverter.ToSingle(f.Image.At(f.Cap,4),0)==2.3888888f,"incomplete startup leaves cinematic limit untouched");
+   int attempts=0;
+   using(var process=Process.GetCurrentProcess()) GameplayFovFix.UntilReady(process,3,delegate
+   {
+    attempts++;
+    if(attempts==2) f.Put(0x6000,header);
+    GameLayout.Discover(f.Image,f.Handle,true,true);
+   });
+   Assert(attempts==2,"normal readiness loop retries partial metadata and succeeds when registration appears");
+   f.Put(f.View,new byte[]{0x90});int invalidAttempts=0;bool incompatible=false;
+   try
+   {
+    using(var process=Process.GetCurrentProcess()) GameplayFovFix.UntilReady(process,3,delegate
+    { invalidAttempts++;GameLayout.Discover(f.Image,f.Handle,true,true); });
+   }
+   catch(GameLayout.IncompatibleException) { incompatible=true; }
+   Assert(incompatible && invalidAttempts==1,"a genuine view-signature mismatch still stops without retries or bypasses");
+  }
   Reject(f=>f.Put(0x1680,f.Image.At(0x1600,39)),"ambiguous cinematic signature rejected");
   Reject(f=>f.Put(f.View,new byte[]{0x90}),"missing view signature rejected");
   Reject(f=>f.Put(f.Setter+28,BitConverter.GetBytes(0x70000)),"out-of-bounds FOV field rejected");
