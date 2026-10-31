@@ -57,7 +57,7 @@ internal static class CameraFraming
         if (Running(game)) { Console.WriteLine("Cinematic framing correction is already running."); return; }
         using (var ready=new EventWaitHandle(false,EventResetMode.ManualReset,Name(game,"Ready")))
         {
-            var info=new ProcessStartInfo(Process.GetCurrentProcess().MainModule.FileName,"--pid "+game.Id+" --watch"+CinematicFix.WatcherBuildArgument(game));
+            var info=new ProcessStartInfo(Process.GetCurrentProcess().MainModule.FileName,"--pid "+game.Id+" --watch");
             info.UseShellExecute=true; info.WindowStyle=ProcessWindowStyle.Hidden; info.WorkingDirectory=AppDomain.CurrentDomain.BaseDirectory;
             using (Process child=Process.Start(info))
             {

@@ -5,10 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Security.Cryptography;
-using System.Text;
 
-// Runtime cinematic fix for the Steam full game, CL 4909945, with validated dynamic address discovery.
+// Runtime cinematic fix for the Steam full game, CL 4927986, with validated dynamic address discovery.
 // No executable files are modified. Closing the game resets this change.
 public static class CinematicFix
 {
@@ -16,37 +14,16 @@ public static class CinematicFix
     {
         public NotReadyException(string message) : base(message) { }
     }
-    internal sealed class BuildDeclinedException : InvalidOperationException { }
-    static string approvedBuild;
-    static bool hiddenWatcher;
-    internal static bool AskDifferentBuild(string version,int size,TextReader input,TextWriter output)
+    static string lastBuildAnnouncement;
+    internal static void AnnounceBuild(string version,int size,System.IO.TextWriter output)
     {
-        output.WriteLine("This game build has not been tested with the 32:9 fix.");
-        output.WriteLine("Detected: "+version+" (module size "+size+")");
-        output.WriteLine("Tested: "+SupportedVersion+" (module size 324030464)");
-        output.WriteLine("Continuing may fail or cause incorrect framing or a game crash. Compatibility checks remain enabled.");
-        while (true)
-        {
-            output.Write("Continue trying the mod for this game session? [Yes/No]: "); output.Flush();
-            string answer=input.ReadLine();
-            if (answer==null) return false;
-            answer=answer.Trim();
-            if (String.Equals(answer,"yes",StringComparison.OrdinalIgnoreCase) || String.Equals(answer,"y",StringComparison.OrdinalIgnoreCase)) return true;
-            if (answer.Length==0 || String.Equals(answer,"no",StringComparison.OrdinalIgnoreCase) || String.Equals(answer,"n",StringComparison.OrdinalIgnoreCase)) return false;
-            output.WriteLine("Please enter Yes or No.");
-        }
+        if(version==SupportedVersion && size==323710976) return;
+        string identity=version+"|"+size;
+        if(lastBuildAnnouncement==identity) return;
+        output.WriteLine("Untested game build detected: "+version+" (module size "+size+"). Continuing with required camera layout validation.");
+        lastBuildAnnouncement=identity;
     }
-    static string BuildToken(Process game,ProcessModule main)
-    {
-        string identity=game.Id+"|"+game.StartTime.ToUniversalTime().Ticks+"|"+main.FileVersionInfo.FileVersion+"|"+main.ModuleMemorySize;
-        using (var sha=SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(identity))).Replace("-","");
-    }
-    internal static string WatcherBuildArgument(Process game)
-    {
-        string token=BuildToken(game,game.MainModule);
-        return approvedBuild==token ? " --build-consent "+token : "";
-    }
-    const string SupportedVersion = "+++fenix2+fairlight-gamma-release-CL-4909945";
+    const string SupportedVersion = "+++fenix2+fairlight-omega-release-CL-4927986";
     static readonly byte[] Original = { 0x8e,0xe3,0x18,0x40 };
     static readonly byte[] Wide = { 0x39,0x8e,0x63,0x40 };
     [DllImport("kernel32", SetLastError=true)] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
@@ -73,13 +50,7 @@ public static class CinematicFix
         foreach (ProcessModule module in game.Modules)
             if (module.ModuleName.IndexOf("EasyAntiCheat", StringComparison.OrdinalIgnoreCase) >= 0)
                 throw new InvalidOperationException("The game has anti-cheat loaded. Use the offline 32:9 launcher.");
-        bool differentBuild=main.FileVersionInfo.FileVersion!=SupportedVersion || main.ModuleMemorySize!=324030464;
-        if (differentBuild && approvedBuild!=BuildToken(game,main))
-        {
-            if (hiddenWatcher) throw new InvalidOperationException("Different game build has no approval for this session. No changes made.");
-            if (!AskDifferentBuild(main.FileVersionInfo.FileVersion,main.ModuleMemorySize,Console.In,Console.Out)) throw new BuildDeclinedException();
-            approvedBuild=BuildToken(game,main);
-        }
+        AnnounceBuild(main.FileVersionInfo.FileVersion,main.ModuleMemorySize,Console.Out);
         IntPtr h = OpenProcess(check ? 0x410u : 0x438u, false, game.Id);
         if (h == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error(), "Cannot access the game process.");
         try
@@ -123,12 +94,16 @@ public static class CinematicFix
     // Readiness failures never write memory. A wait of -1 retries until game exit.
     internal static void UntilReady(Process game,int wait,Action attempt)
     {
-        Stopwatch timer=Stopwatch.StartNew(); bool announced=false;
+        Stopwatch timer=Stopwatch.StartNew(); bool announced=false; string previousReason=null;
         while (true)
         {
             try { attempt(); return; }
             catch (Win32Exception) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
-            catch (GameLayout.InitializingException) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
+            catch (GameLayout.InitializingException ex)
+            {
+                if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw;
+                if(previousReason!=ex.Message) { Console.WriteLine(ex.Message); previousReason=ex.Message; }
+            }
             catch (NotReadyException) { if (wait==0 || (wait>0 && timer.Elapsed.TotalSeconds>=wait) || game.HasExited) throw; }
             if (!announced) { Console.WriteLine("Waiting for cinematic initialization"+(wait<0 ? " until ready or game exit." : ".")); announced=true; }
             Thread.Sleep(500);
@@ -138,8 +113,8 @@ public static class CinematicFix
     {
         try
         {
-            int pid = 0, wait = 0; bool check = false, restore = false, watch = false; string consent=null;
-            approvedBuild=null; hiddenWatcher=false;
+            int pid = 0, wait = 0; bool check = false, restore = false, watch = false;
+            lastBuildAnnouncement=null;
             for (int i=0; i<args.Length; i++)
             {
                 if (args[i] == "--pid" && i+1<args.Length) pid = int.Parse(args[++i]);
@@ -148,11 +123,9 @@ public static class CinematicFix
                 else if (args[i] == "--check") check = true;
                 else if (args[i] == "--restore") restore = true;
                 else if (args[i] == "--watch") watch = true;
-                else if (args[i] == "--build-consent" && i+1<args.Length) consent=args[++i];
                 else throw new ArgumentException("Usage: E-Day-32x9.exe [--pid ID] [--wait SECONDS|forever] [--check | --restore]");
             }
-            if (wait < -1 || wait > 180 || (check && restore) || (consent!=null && (!watch || consent.Length!=64 || !consent.All(Uri.IsHexDigit)))) throw new ArgumentException("Invalid arguments.");
-            hiddenWatcher=watch; approvedBuild=consent;
+            if (wait < -1 || wait > 180 || (check && restore)) throw new ArgumentException("Invalid arguments.");
             Process game;
             if (pid != 0) game = Process.GetProcessById(pid);
             else
@@ -175,7 +148,6 @@ public static class CinematicFix
                 return 0;
             }
         }
-        catch (BuildDeclinedException) { Console.WriteLine("32:9 fix skipped: unsupported build declined. No changes made. The game can continue without the mod."); return 2; }
         catch (Exception ex) { Console.Error.WriteLine("32:9 fix: " + ex.Message); return 1; }
     }
 }

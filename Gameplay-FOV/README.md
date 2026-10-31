@@ -1,77 +1,66 @@
-# E-Day updated mod: 32:9 cutscenes + gameplay FOV
+# E-Day startup fix: 32:9 cutscenes + gameplay FOV
 
-Steam build: +++fenix2+fairlight-gamma-release-CL-4909945
-Module size: 324030464. Release prepared October 15, 2026.
+Steam +++fenix2+fairlight-omega-release-CL-4927986, module size 323710976.
+Prepared October 30, 2026.
 
-## Installation and updating
+## What changed
 
-Close the game before replacing an existing helper. Keep your current text
-settings when updating. Copy these files beside GoWEDay-Steam.exe:
+The game exposes native class registration code in stages during startup.
+The previous helper could see some classes before TCPlayerCameraManager_CamBridge
+and incorrectly report a permanent incompatible layout. Missing required class
+registration now remains a retryable initialization condition. No candidate
+layout is published and no game changes are made until validation completes.
+Progress is printed when the initialization reason changes rather than printing
+the entire discovery message on every retry.
 
-- E-Day-32x9-FOV.exe
-- Launch-E-Day-32x9-FOV.bat
+The Yes/No build-number question is removed. Different build numbers automatically
+attempt full camera layout discovery and validation. This does not skip missing,
+ambiguous, contradictory or invalid layout checks: a genuine signature or field
+mismatch still stops the helper before it applies the mod. A class that remains
+unavailable keeps the launcher waiting until ready or game exit. Future changed
+code/structures can still require another mod revision.
+
+## Install or update
+
+Close the game before replacing its existing helper. Preserve your existing TXT
+settings. Copy E-Day-32x9-FOV.exe, Launch-E-Day-32x9-FOV.bat, and the following settings beside GoWEDay-Steam.exe:
+
 - E-Day-32x9-framing.txt
 - E-Day-gameplay-fov.txt
 
-Keep Steam running and double-click Launch-E-Day-32x9-FOV.bat. Leave its window open until the
-game exits. Apply-E-Day-32x9-FOV.bat and Restore-E-Day-32x9-FOV.bat are optional apply/undo shortcuts.
-Use only one of the three camera variants in a game session.
+Keep Steam running and double-click Launch-E-Day-32x9-FOV.bat. The launcher starts the full Steam
+game directly and waits for initialization without a fixed time limit. Leave
+the launcher open until game exit. Apply-E-Day-32x9-FOV.bat and Restore-E-Day-32x9-FOV.bat are optional shortcuts.
+Use only one camera variant per session.
 
-Enable Cinematic Ultrawide Support in the game. E-Day-32x9-framing.txt accepts
-1.00 through 8.00, with packaged default 3.50. The lens-aware policy reduces
-excess widening on wide lenses. Turning Cinematic Ultrawide Support off restores
-authored framing. Runtime view correction remains synchronous with the camera
-calculation so camera changes do not wait for a polling correction.
+Enable Cinematic Ultrawide Support. E-Day-32x9-framing.txt accepts 1.00 through
+8.00; packaged default 3.50. Lens-aware synchronous framing and original off-mode
+restoration remain unchanged.
 
-E-Day-gameplay-fov.txt accepts 60 through 150, including decimals, or 0 to follow
-the game's original setting. Packaged default: 120. Your installed value is
-preserved when updating only the EXE. This adjusts the gameplay settings input;
-aiming, cover and special camera behavior continue through the engine's logic.
+E-Day-gameplay-fov.txt accepts 60 through 150 (including decimals), or 0 to follow
+the game's setting. Packaged default 120. Aiming/cover/special camera behavior
+continues through the engine's logic. Keep your own existing value when updating.
 
-## Update resilience and limits
+## Restore and compatibility
 
-E-Day-GameLayout.cs searches the loaded executable for the camera code and native
-class registrations. It resolves relative references and the object-array key,
-reads class default vtables, and validates object identities and hierarchy data.
-It discovers the cinematic fill field and gameplay FOV/target-selector fields
-from their instructions, and controller ownership from native property metadata.
+Run Restore-E-Day-32x9-FOV.bat or close the game to discard session changes. Normal Steam launches
+do not start this helper. Game executable files and permanent environment
+settings are unchanged. Existing offline/protected-session checks remain.
+The launcher's Steam-ID preservation/owned-file cleanup behavior is unchanged.
 
-The complete required layout is validated before writes. Missing/ambiguous
-signatures, invalid call targets, changed slider semantics, invalid field bounds
-and incompatible native cinematic structures are rejected. There is no fallback
-to the previous build's addresses. A successful build-consent answer does not
-skip these checks. An untested build still asks Yes/No before attempting it.
-
-This handles compatible address relocations and the validated field changes in
-CL-4909945. It cannot guarantee compatibility with future code, class or camera
-structure changes. Such updates can still require a new mod revision. This
-release targets Steam; it does not establish compatibility with Game Pass.
-
-The launcher retains its previous local-only environment and Steam-ID handling:
-SteamAppId=3010850, EOS_USE_ANTICHEATCLIENTNULL=1, direct GoWEDay-Steam.exe launch,
-preservation of existing steam_appid.txt, and cleanup only of its created file
-after game exit. No permanent environment settings or executable disk patches.
-The existing offline-session/anti-cheat checks remain enabled.
-
-## Undo
-
-Run Restore-E-Day-32x9-FOV.bat, or close the game to discard session changes. Normal Steam
-launches do not start the helper. After closing, removing the runtime mod files
-uninstalls it. Keep the text settings if you plan to install a newer release.
+Steam only. This release does not establish Game Pass compatibility. Compatible
+future relocations can be discovered; future structural/code changes are not
+guaranteed. Full campaign/every camera/resolution remain unverified.
 
 ## Validation and source
 
-All included fixtures passed. Layout fixtures include address-relocated images,
-old/new manager fields, ambiguous/missing signatures, changed fields/constants,
-metadata conflicts and 1000 masked-search comparisons. Camera/gameplay fixtures
-execute only against their own test-process data using both member layouts.
+This variant passed 143 fixture checks. These include staged registration
+appearing after an initial scan, no partial layout publication, successful retry,
+strict rejection of genuine mismatches, automatic build policy, relocated old/new
+fields and 1000 masked-search comparisons. Fixtures use their own process only.
 
-The combined helper passed live testing on CL-4909945: the user confirmed 32:9
-framing with no zoom flashes at camera changes, and correct gameplay FOV/aiming.
-Undo and reapply were checked. The installed framing and FOV settings hashes
-were preserved. Other variants share the tested resolver/runtime components
-and passed their respective fixtures; they were not separately visually tested.
-Full campaign and every camera/resolution remain unverified.
-
-This folder contains the complete source, build instructions and fixtures for
-this variant. Compiled executables are excluded from this source repository.
+Live startup diagnostics reproduced the old fatal missing-class result before
+the same build later passed all checks. The corrected resolver passed three
+fresh-start checks on CL-4927986 without an incompatible result. See VALIDATION.txt
+for details and limits. This folder contains the matching full source, build instructions and fixtures.
+Compiled executables are excluded from this source repository.
